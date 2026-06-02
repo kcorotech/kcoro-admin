@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { LayoutDashboard, CheckCircle, HelpCircle, Users, Link as LinkIcon, FileText, RefreshCw, Sun, Moon, LogOut, Menu, X, Activity, AlertCircle, ArrowLeft, Search } from 'lucide-react';
+import { LayoutDashboard, CheckCircle, HelpCircle, Users, Link as LinkIcon, FileText, RefreshCw, Sun, Moon, LogOut, Menu, X, Activity, AlertCircle, ArrowLeft, Search, Maximize2 } from 'lucide-react';
 
 const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbzZkgTYLPD6hZJTa8et6DjumjKbyxS5mr92Mm5SzQC82l9Qyrq1x6s0GbvPs7B7_6yCeQ/exec";
 
@@ -22,9 +22,16 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [examSearch, setExamSearch] = useState('');
+  
+  // New Filters
+  const [userSearch, setUserSearch] = useState('');
+  const [userVersionFilter, setUserVersionFilter] = useState('All');
+  const [examTermFilter, setExamTermFilter] = useState('All');
+  const [examYearFilter, setExamYearFilter] = useState('All');
 
-  // Drilldown State
+  // Modals & Drilldown
   const [selectedUser, setSelectedUser] = useState(null);
+  const [botResponseModal, setBotResponseModal] = useState(null);
 
   // --- 1. INITIALIZATION & AUTH ---
   useEffect(() => {
@@ -142,6 +149,16 @@ export default function App() {
     });
   }, [success, unknown, users]);
 
+  // Unique Filters Extraction
+  const uniqueAppVersions = useMemo(() => [...new Set(users.map(u => String(u['App Version'] || '')).filter(v => v !== ''))].sort(), [users]);
+  const uniqueExamYears = useMemo(() => {
+    const years = exams.map(e => {
+      const match = e.title.match(/20\d{2}/);
+      return match ? match[0] : null;
+    }).filter(Boolean);
+    return [...new Set(years)].sort().reverse();
+  }, [exams]);
+
   const getBadgeClass = (status) => {
     switch(status) {
       case 'Correct': return 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800';
@@ -183,6 +200,22 @@ export default function App() {
       {/* MOBILE OVERLAY */}
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      {/* BOT RESPONSE MODAL */}
+      {botResponseModal && (
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 transition-opacity" onClick={() => setBotResponseModal(null)}>
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4 border-b dark:border-gray-700 pb-3">
+              <h2 className="text-lg font-bold flex items-center"><Activity className="w-5 h-5 mr-2 text-blue-500"/> Bot Full Response</h2>
+              <button onClick={() => setBotResponseModal(null)} className="text-gray-500 hover:text-red-500 transition-colors"><X/></button>
+            </div>
+            <div className="overflow-y-auto flex-1 pr-2">
+              <p className="text-gray-700 dark:text-gray-200 whitespace-pre-wrap leading-relaxed text-sm">{botResponseModal}</p>
+            </div>
+            <button onClick={() => setBotResponseModal(null)} className="mt-6 w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700">Close</button>
+          </div>
+        </div>
       )}
 
       {/* SIDEBAR */}
@@ -306,21 +339,29 @@ export default function App() {
                       <th className="p-4 font-semibold">User</th>
                       <th className="p-4 font-semibold">Device (Ver)</th>
                       <th className="p-4 font-semibold">Question</th>
-                      <th className="p-4 font-semibold">Bot Response</th>
+                      <th className="p-4 font-semibold w-1/4">Bot Response</th>
                       <th className="p-4 font-semibold">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y dark:divide-gray-700">
                     {success
                       .filter(log => statusFilter === 'All' || log.Validation === statusFilter)
-                      .filter(log => (log.Question||'').toLowerCase().includes(searchTerm.toLowerCase()))
+                      .filter(log => String(log.Question || '').toLowerCase().includes(searchTerm.toLowerCase()))
                       .map((log, i) => (
                       <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                        <td className="p-4 text-xs text-gray-500 whitespace-nowrap">{log.Timestamp?.replace("'","")}</td>
+                        <td className="p-4 text-xs text-gray-500 whitespace-nowrap">{String(log.Timestamp || '')?.replace("'","")}</td>
                         <td className="p-4 font-bold text-sm whitespace-nowrap">{log.Name}</td>
                         <td className="p-4 text-xs text-gray-500 whitespace-nowrap">{log['Device Model']} <br/><span className="text-blue-500">v{log['App Version']}</span></td>
                         <td className="p-4 text-sm font-medium">{log.Question}</td>
-                        <td className="p-4 text-xs text-gray-500 max-w-xs truncate" title={log['Bot Response']}>{log['Bot Response']}</td>
+                        <td className="p-4 text-xs text-gray-500">
+                          <button 
+                            onClick={() => setBotResponseModal(log['Bot Response'])}
+                            className="flex items-center text-left hover:text-blue-600 dark:hover:text-blue-400 group max-w-xs transition-colors"
+                          >
+                            <span className="truncate flex-1" title="Click to view full response">{log['Bot Response']}</span>
+                            <Maximize2 className="w-3 h-3 ml-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"/>
+                          </button>
+                        </td>
                         <td className="p-4">
                           <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getBadgeClass(log.Validation)}`}>
                             {log.Validation || 'Review'}
@@ -336,7 +377,7 @@ export default function App() {
 
           {/* VIEW: UNKNOWN LOGS */}
           {activeTab === 'unknown' && !selectedUser && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow overflow-hidden flex flex-col">
                <div className="p-4 md:p-6 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
                   <div className="relative w-full lg:w-64">
                     <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
@@ -350,10 +391,10 @@ export default function App() {
                   </thead>
                   <tbody className="divide-y dark:divide-gray-700">
                     {unknown
-                      .filter(log => (log.Question||'').toLowerCase().includes(searchTerm.toLowerCase()))
+                      .filter(log => String(log.Question || '').toLowerCase().includes(searchTerm.toLowerCase()))
                       .map((log, i) => (
                       <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                        <td className="p-4 text-xs text-gray-500 whitespace-nowrap">{log.Timestamp?.replace("'","")}</td>
+                        <td className="p-4 text-xs text-gray-500 whitespace-nowrap">{String(log.Timestamp || '')?.replace("'","")}</td>
                         <td className="p-4 font-bold text-sm whitespace-nowrap">{log.Name}</td>
                         <td className="p-4 text-xs text-gray-500 whitespace-nowrap">{log['Device Model']} <br/><span className="text-blue-500">v{log['App Version']}</span></td>
                         <td className="p-4 text-red-500 dark:text-red-400 font-medium text-sm">{log.Question}</td>
@@ -367,35 +408,54 @@ export default function App() {
 
           {/* VIEW: USERS & COMMON USERS */}
           {(activeTab === 'users' || activeTab === 'common') && !selectedUser && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {(activeTab === 'users' ? users : commonUsers).map((user, i) => {
-                const uSuccess = success.filter(s => s['Hardware ID'] === user['Hardware ID']);
-                const uUnknown = unknown.filter(u => u['Hardware ID'] === user['Hardware ID']);
-                return (
-                  <button 
-                    key={i} 
-                    onClick={() => setSelectedUser(user)}
-                    className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow hover:shadow-lg hover:-translate-y-1 transition-all flex flex-col items-center text-center border border-transparent hover:border-blue-500 text-left"
-                  >
-                    <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-2xl font-bold mb-4 shrink-0">
-                      {user.Name?.charAt(0).toUpperCase()}
-                    </div>
-                    <h3 className="font-bold text-lg text-gray-900 dark:text-white">{user.Name}</h3>
-                    <p className="text-xs text-gray-500 mb-4">{user['Device Model']} • {user.Platform}</p>
-                    
-                    <div className="w-full grid grid-cols-2 gap-2 mt-auto border-t dark:border-gray-700 pt-4">
-                      <div className="bg-teal-50 dark:bg-teal-900/20 p-2 rounded-lg">
-                        <p className="text-xs text-teal-600 font-bold uppercase">Success</p>
-                        <p className="font-black text-teal-700 dark:text-teal-400">{uSuccess.length}</p>
+            <div className="flex flex-col space-y-4">
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow flex flex-col md:flex-row gap-4 items-center justify-between">
+                 <div className="relative w-full md:w-96">
+                    <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+                    <input type="text" placeholder="Search by name or device..." onChange={e => setUserSearch(e.target.value)} className="w-full pl-9 p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-2 focus:ring-blue-500 outline-none"/>
+                 </div>
+                 <div className="flex items-center gap-2 w-full md:w-auto">
+                    <span className="text-sm font-semibold text-gray-500 whitespace-nowrap">App Version:</span>
+                    <select onChange={e => setUserVersionFilter(e.target.value)} className="p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-2 focus:ring-blue-500 outline-none flex-1 md:flex-none">
+                      <option value="All">All Versions</option>
+                      {uniqueAppVersions.map(v => <option key={v} value={v}>v{v}</option>)}
+                    </select>
+                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {(activeTab === 'users' ? users : commonUsers)
+                  .filter(u => userVersionFilter === 'All' || String(u['App Version']) === userVersionFilter)
+                  .filter(u => String(u.Name || '').toLowerCase().includes(userSearch.toLowerCase()) || String(u['Device Model'] || '').toLowerCase().includes(userSearch.toLowerCase()))
+                  .map((user, i) => {
+                  const uSuccess = success.filter(s => s['Hardware ID'] === user['Hardware ID']);
+                  const uUnknown = unknown.filter(u => u['Hardware ID'] === user['Hardware ID']);
+                  return (
+                    <button 
+                      key={i} 
+                      onClick={() => setSelectedUser(user)}
+                      className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow hover:shadow-lg hover:-translate-y-1 transition-all flex flex-col items-center text-center border border-transparent hover:border-blue-500 text-left"
+                    >
+                      <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-2xl font-bold mb-4 shrink-0">
+                        {user.Name?.charAt(0).toUpperCase()}
                       </div>
-                      <div className="bg-red-50 dark:bg-red-900/20 p-2 rounded-lg">
-                        <p className="text-xs text-red-600 font-bold uppercase">Unknown</p>
-                        <p className="font-black text-red-700 dark:text-red-400">{uUnknown.length}</p>
+                      <h3 className="font-bold text-lg text-gray-900 dark:text-white">{user.Name}</h3>
+                      <p className="text-xs text-gray-500 mb-4">{user['Device Model']} • {user.Platform} <br/><span className="text-blue-500 font-semibold">v{user['App Version']}</span></p>
+                      
+                      <div className="w-full grid grid-cols-2 gap-2 mt-auto border-t dark:border-gray-700 pt-4">
+                        <div className="bg-teal-50 dark:bg-teal-900/20 p-2 rounded-lg">
+                          <p className="text-xs text-teal-600 font-bold uppercase">Success</p>
+                          <p className="font-black text-teal-700 dark:text-teal-400">{uSuccess.length}</p>
+                        </div>
+                        <div className="bg-red-50 dark:bg-red-900/20 p-2 rounded-lg">
+                          <p className="text-xs text-red-600 font-bold uppercase">Unknown</p>
+                          <p className="font-black text-red-700 dark:text-red-400">{uUnknown.length}</p>
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                )
-              })}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           )}
 
@@ -413,11 +473,10 @@ export default function App() {
                     <tr><th className="p-4">Type</th><th className="p-4">Date</th><th className="p-4">Question</th><th className="p-4">Status / Response</th></tr>
                   </thead>
                   <tbody className="divide-y dark:divide-gray-700">
-                    {/* Combine and sort logs for this user */}
                     {[
                       ...success.filter(s => s['Hardware ID'] === selectedUser['Hardware ID']).map(l => ({...l, type: 'Success'})),
                       ...unknown.filter(u => u['Hardware ID'] === selectedUser['Hardware ID']).map(l => ({...l, type: 'Unknown'}))
-                    ].sort((a,b) => new Date(b.Timestamp.replace("'","")) - new Date(a.Timestamp.replace("'","")))
+                    ].sort((a,b) => new Date(String(b.Timestamp || '').replace("'","")) - new Date(String(a.Timestamp || '').replace("'","")))
                     .map((log, i) => (
                       <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                          <td className="p-4">
@@ -425,15 +484,21 @@ export default function App() {
                              {log.type}
                            </span>
                          </td>
-                         <td className="p-4 text-xs text-gray-500 whitespace-nowrap">{log.Timestamp?.replace("'","")}</td>
+                         <td className="p-4 text-xs text-gray-500 whitespace-nowrap">{String(log.Timestamp || '')?.replace("'","")}</td>
                          <td className="p-4 text-sm font-medium">{log.Question}</td>
                          <td className="p-4">
                            {log.type === 'Success' ? (
-                              <div className="flex flex-col items-start gap-1">
+                              <div className="flex flex-col items-start gap-2">
                                 <span className={`px-2 py-1 rounded-full text-xs font-bold border ${getBadgeClass(log.Validation)}`}>
                                   {log.Validation || 'Review'}
                                 </span>
-                                <span className="text-xs text-gray-500 truncate max-w-xs block" title={log['Bot Response']}>{log['Bot Response']}</span>
+                                <button 
+                                  onClick={() => setBotResponseModal(log['Bot Response'])}
+                                  className="text-xs text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 group max-w-xs text-left transition-colors flex items-center"
+                                >
+                                  <span className="truncate" title="Click to view full response">{log['Bot Response']}</span>
+                                  <Maximize2 className="w-3 h-3 ml-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"/>
+                                </button>
                               </div>
                            ) : (
                               <span className="text-xs text-red-500 font-bold italic">No Response</span>
@@ -450,7 +515,7 @@ export default function App() {
            {/* VIEW: EXAMS */}
            {activeTab === 'exams' && !selectedUser && (
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 md:p-6 flex flex-col">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+              <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4 border-b dark:border-gray-700 pb-6">
                 <div>
                   <h3 className="text-lg font-bold flex items-center gap-2">
                     <FileText className="text-blue-500"/> Local Exam Cache ({exams.length} Papers)
@@ -458,19 +523,34 @@ export default function App() {
                   <p className="text-xs text-gray-500 mt-1">Fetched automatically from GitHub JSON</p>
                 </div>
                 
-                <div className="flex items-center gap-4 w-full md:w-auto">
+                <div className="flex flex-col md:flex-row items-center gap-3 w-full xl:w-auto">
+                  <select onChange={e => setExamTermFilter(e.target.value)} className="w-full md:w-auto p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    <option value="All">All Terms</option>
+                    <option value="Fall">Fall</option>
+                    <option value="Spring">Spring</option>
+                  </select>
+                  
+                  <select onChange={e => setExamYearFilter(e.target.value)} className="w-full md:w-auto p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    <option value="All">All Years</option>
+                    {uniqueExamYears.map(year => <option key={year} value={year}>{year}</option>)}
+                  </select>
+
                   <div className="relative w-full md:w-64">
                     <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
-                    <input type="text" placeholder="Search exams..." onChange={e => setExamSearch(e.target.value)} className="w-full pl-9 p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-2 focus:ring-blue-500 outline-none"/>
+                    <input type="text" placeholder="Search course code (e.g. CS103)" onChange={e => setExamSearch(e.target.value)} className="w-full pl-9 p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm focus:ring-2 focus:ring-blue-500 outline-none"/>
                   </div>
-                  <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400 px-3 py-1.5 rounded-lg font-bold whitespace-nowrap border border-blue-200 dark:border-blue-800">
+                  <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400 px-3 py-2 rounded-lg font-bold whitespace-nowrap border border-blue-200 dark:border-blue-800">
                     v {localStorage.getItem("EXAM_ADMIN_VERSION") || "0"}
                   </span>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {exams.filter(e => e.title.toLowerCase().includes(examSearch.toLowerCase())).map((exam, i) => (
+                {exams
+                  .filter(e => examTermFilter === 'All' || String(e.title || '').toLowerCase().includes(examTermFilter.toLowerCase()))
+                  .filter(e => examYearFilter === 'All' || String(e.title || '').includes(examYearFilter))
+                  .filter(e => String(e.title || '').toLowerCase().includes(examSearch.toLowerCase()))
+                  .map((exam, i) => (
                   <div key={i} className="p-4 border dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900/50 hover:border-blue-500 transition-colors">
                     <p className="font-bold text-sm mb-2 text-gray-900 dark:text-white" title={exam.title}>{exam.title}</p>
                     <div className="flex justify-between items-center mt-4">
@@ -502,7 +582,7 @@ function SidebarBtn({ icon: Icon, label, count, color, active, onClick }) {
 
 function StatCard({ icon: Icon, title, value, color, bgColor }) {
   return (
-    <div className={`bg-white dark:bg-gray-800 p-6 rounded-xl shadow flex items-center gap-4 border-t-4 border-transparent`} style={{borderTopColor: 'currentColor'}} className={`bg-white dark:bg-gray-800 p-6 rounded-xl shadow flex items-center gap-4 border-t-4 ${color.split(' ')[0].replace('text', 'border')} dark:${color.split(' ')[1].replace('text', 'border')}`}>
+    <div className={`bg-white dark:bg-gray-800 p-6 rounded-xl shadow flex items-center gap-4 border-t-4 ${color.split(' ')[0].replace('text', 'border')} dark:${color.split(' ')[1].replace('text', 'border')}`}>
       <div className={`p-4 rounded-full ${bgColor} ${color}`}>
         <Icon className="w-6 h-6" />
       </div>
