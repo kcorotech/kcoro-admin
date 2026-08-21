@@ -1,9 +1,9 @@
-import OneFileCode from "./pages/OneFileCode";
+import LoginPage from "./pages/LoginPage";
 
 export default function App(){
   return(
     <div>
-      <OneFileCode/>
+      <LoginPage/>
     </div>
   )
 }
