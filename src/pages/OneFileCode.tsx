@@ -185,7 +185,7 @@ const statusPillClass = (status) => {
 const statusSelectClass = (status) =>
   cx("status-select", statusPillClass(status));
 
-export default function App() {
+export default function OneFileCode() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [role, setRole] = useState("admin");
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
