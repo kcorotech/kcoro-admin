@@ -1,9 +1,11 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import { Auth_Status, EXPIRE_KEY } from "../../utils/Keys";
+import type { UserRole } from "../../utils/enum";
 
 export interface UserState {
   isAuthenticated: boolean;
+  role: UserRole | null;
 }
 
 const getInitialAuthState = (): boolean => {
@@ -29,6 +31,7 @@ const getInitialAuthState = (): boolean => {
 
 const initialState: UserState = {
   isAuthenticated: getInitialAuthState(),
+  role: null,
 };
 
 export const userSlice = createSlice({
@@ -38,10 +41,13 @@ export const userSlice = createSlice({
     set_Is_Authenticated: (state, action: PayloadAction<boolean>) => {
       state.isAuthenticated = action.payload;
     },
+    set_User_Role: (state, action: PayloadAction<UserRole>) => {
+      state.role = action.payload;
+    },
   },
 });
 
 // Action creators are generated for each case reducer function
-export const { set_Is_Authenticated } = userSlice.actions;
+export const { set_Is_Authenticated, set_User_Role} = userSlice.actions;
 
 export default userSlice.reducer;
