@@ -1,7 +1,11 @@
 import { useState } from "react";
 import "../CSS/LoginPage.css";
+import { useDispatch } from 'react-redux'
+import { set_Is_Authenticated } from "../redux/user/userSlice";
+import { Auth_Status, EXPIRE_KEY } from "../utils/Keys";
 
 function LoginPage() {
+  const dispatch = useDispatch()
   const [username, setUserName] = useState<string>("");
   const [password, setPassword] = useState<string>("");
 
@@ -16,9 +20,11 @@ function LoginPage() {
       username?.toLowerCase() === "admin" &&
       password?.toLowerCase() === "myuog"
     ) {
+
       const expiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
-      localStorage.setItem("expire_credentials", String(expiry));
-      localStorage.setItem("authStatus", String("true"));
+      localStorage.setItem(EXPIRE_KEY, String(expiry));
+      localStorage.setItem(Auth_Status, String("true"));
+      dispatch(set_Is_Authenticated(true))
     } else {
       alert("Wrong credentials!");
       setUserName("");
