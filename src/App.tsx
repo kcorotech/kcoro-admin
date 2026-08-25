@@ -1,9 +1,14 @@
-import OneFileCode from "./pages/OneFileCode";
+import LoginPage from "./pages/LoginPage";
+import "./App.css";
+import { useSelector } from "react-redux";
+import type { RootState } from "./redux/store";
+export default function App() {
+  const isAuthenticated = useSelector(
+    (state: RootState) => state.user.isAuthenticated,
+  );
 
-export default function App(){
-  return(
-    <div>
-      <OneFileCode/>
-    </div>
-  )
+  console.log(isAuthenticated)
+  return (
+    <div className="app">{!isAuthenticated ? <LoginPage /> : <p>hello</p>}</div>
+  );
 }
