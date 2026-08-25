@@ -22,7 +22,7 @@ function LoginPage() {
       password?.toLowerCase() === "myuog"
     ) {
       dispatch(set_User_Role(UserRole.ADMIN));
-      const expiry = Date.now() + 10 * 1000;
+      const expiry = Date.now() + 7 * 24 * 60 * 60 * 1000;
       localStorage.setItem(EXPIRE_KEY, String(expiry));
       localStorage.setItem(Auth_Status, String("true"));
       dispatch(set_Is_Authenticated(true));
