@@ -34,71 +34,73 @@ function LoginPage() {
   };
 
   return (
-    <div className="authContainer">
-      <div className="brandRow">
-        <div className="brandMark">K</div>
+    <div className="app">
+      <div className="authContainer">
+        <div className="brandRow">
+          <div className="brandMark">K</div>
 
-        <div className="brandName">
-          <strong>Kcoro Admin</strong>
+          <div className="brandName">
+            <strong>Kcoro Admin</strong>
+          </div>
         </div>
-      </div>
 
-      <div className="inputGroup">
-        <label htmlFor="username">Username</label>
+        <div className="inputGroup">
+          <label htmlFor="username">Username</label>
 
-        <input
-          id="username"
-          type="text"
-          placeholder="Enter your username"
-          className="inputField"
-          autoComplete="username"
-          value={username}
-          onChange={(e) => {
-            setUserName(e?.target?.value);
-          }}
-        />
-      </div>
-
-      <div className="inputGroup">
-        <label htmlFor="password">Password</label>
-
-        <div className="passwordWrapper">
           <input
-            id="password"
-            type={showPassword ? "text" : "password"}
-            placeholder="Enter your password"
+            id="username"
+            type="text"
+            placeholder="Enter your username"
             className="inputField"
-            autoComplete="current-password"
-            value={password}
+            autoComplete="username"
+            value={username}
             onChange={(e) => {
-              setPassword(e?.target?.value);
+              setUserName(e?.target?.value);
             }}
           />
-
-          <button
-            type="button"
-            className="passwordToggle"
-            onClick={() => {
-              setShowPassword(!showPassword);
-            }}
-          >
-            {showPassword ? "Hide" : "Show"}
-          </button>
         </div>
-      </div>
 
-      <button
-        type="button"
-        className="login-btn"
-        onClick={() => {
-          handleLogin();
-        }}
-      >
-        Sign in
-      </button>
+        <div className="inputGroup">
+          <label htmlFor="password">Password</label>
 
-      <div className="authFooter">
-        Secure access · Sessions expire after 7 days
+          <div className="passwordWrapper">
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              placeholder="Enter your password"
+              className="inputField"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e?.target?.value);
+              }}
+            />
+
+            <button
+              type="button"
+              className="passwordToggle"
+              onClick={() => {
+                setShowPassword(!showPassword);
+              }}
+            >
+              {showPassword ? "Hide" : "Show"}
+            </button>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="login-btn"
+          onClick={() => {
+            handleLogin();
+          }}
+        >
+          Sign in
+        </button>
+
+        <div className="authFooter">
+          Secure access · Sessions expire after 7 days
+        </div>
       </div>
     </div>
   );

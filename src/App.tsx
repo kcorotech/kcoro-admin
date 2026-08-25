@@ -7,8 +7,9 @@ export default function App() {
     (state: RootState) => state.user.isAuthenticated,
   );
 
-  console.log(isAuthenticated)
   return (
-    <div className="app">{!isAuthenticated ? <LoginPage /> : <p>hello</p>}</div>
+    <div className="appContainer">
+      {!isAuthenticated ? <LoginPage /> : <p>hello</p>}
+    </div>
   );
 }
