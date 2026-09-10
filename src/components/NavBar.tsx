@@ -2,7 +2,7 @@ import "../CSS/NavBar.css";
 
 interface NavBarProps {
   activeTab: string;
-  setActiveTab: (tab: string) => string;
+  setActiveTab: (tab: string) => void;
 }
 
 const tabs = [
