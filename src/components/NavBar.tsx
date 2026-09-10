@@ -1,15 +1,32 @@
 import "../CSS/NavBar.css";
 
-export const NavBar = () => {
+interface NavBarProps {
+  activeTab: string;
+  setActiveTab: (tab: string) => string;
+}
+
+const tabs = [
+  "Dashboard",
+  "Users",
+  "Success Logs",
+  "Unknown Logs",
+  "Exam Not Found",
+  "Common Users",
+];
+
+export const NavBar = ({ activeTab, setActiveTab }: NavBarProps) => {
   return (
     <nav className="navBarWrapper">
       <ul className="itemContainer">
-        <li className="navItem active">Dashboard</li>
-        <li className="navItem">Users</li>
-        <li className="navItem">Success Logs</li>
-        <li className="navItem">Unknown Logs</li>
-        <li className="navItem">Exam Not Found</li>
-        <li className="navItem">Common Users</li>
+        {tabs.map((tab) => (
+          <li
+            key={tab}
+            className={`navItem ${activeTab === tab ? "active" : ""}`}
+            onClick={() => setActiveTab(tab)}
+          >
+            {tab}
+          </li>
+        ))}
       </ul>
     </nav>
   );
