@@ -1,0 +1,85 @@
+.navBarWrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center; /* This centers the navigation bar */
+  padding: 24px;
+}
+
+.itemContainer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  
+  /* Modern Floating Pill Background */
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  
+  /* Glassmorphism effect */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+
+  /* Allows scrolling on tiny screens without breaking the pill */
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none; 
+}
+
+.itemContainer::-webkit-scrollbar {
+  display: none;
+}
+
+.navItem {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  
+  padding: 8px 18px;
+  border-radius: 100px; /* Makes the hover/active state a pill shape */
+  
+  cursor: pointer;
+  white-space: nowrap;
+  
+  transition: all 0.2s ease;
+}
+
+/* Hover State */
+.navItem:hover {
+  color: var(--text);
+  background: rgba(148, 163, 184, 0.15);
+}
+
+/* Active State (Blue Pill) */
+.navItem.active {
+  color: #ffffff;
+  background: var(--primary);
+  box-shadow: 0 4px 14px rgba(79, 124, 255, 0.35);
+}
+
+/* ================================
+   MOBILE
+================================ */
+@media (max-width: 600px) {
+  .navBarWrapper {
+    padding: 16px 15px;
+    
+    /* On mobile, if items overflow, align left so they can scroll */
+    justify-content: flex-start; 
+  }
+  
+  .itemContainer {
+    /* Slightly less rounded on mobile to save screen space */
+    border-radius: 16px; 
+  }
+
+  .navItem {
+    font-size: 13px;
+    padding: 8px 14px;
+    border-radius: 12px;
+  }
+}

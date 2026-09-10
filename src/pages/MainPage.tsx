@@ -1,9 +1,13 @@
-import TopBar from "../components/TopBar"
+import { NavBar } from "../components/NavBar";
+import TopBar from "../components/TopBar";
 
 const MainPage = () => {
   return (
-    <TopBar/>
-  )
-}
+    <>
+      <TopBar />
+      <NavBar />
+    </>
+  );
+};
 
-export default MainPage
+export default MainPage;
