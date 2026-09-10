@@ -37,3 +37,29 @@ body {
   --primary: #4f7cff;
   --primary-hover: #3d6df5;
 }
+
+.mainPageLayout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.contentArea {
+  flex: 1;
+  padding: 24px;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto; 
+}
+
+/* Temporary style for the placeholder pages */
+.pageContent {
+  background: var(--card);
+  padding: 40px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  text-align: center;
+  font-size: 18px;
+  color: var(--text);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+}

@@ -2,7 +2,7 @@ import React from 'react'
 
 const CommonUsersPage = () => {
   return (
-    <div>CommonUsersPage</div>
+    <div className="pageContent" >CommonUsersPage</div>
   )
 }
 

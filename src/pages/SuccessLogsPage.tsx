@@ -2,7 +2,7 @@ import React from 'react'
 
 const SuccessLogsPage = () => {
   return (
-    <div>SuccessLogsPage</div>
+    <div className="pageContent" >SuccessLogsPage</div>
   )
 }
 

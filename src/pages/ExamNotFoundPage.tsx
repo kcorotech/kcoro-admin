@@ -2,7 +2,7 @@ import React from 'react'
 
 const ExamNotFoundPage = () => {
   return (
-    <div>ExamNotFoundPage</div>
+    <div className="pageContent" >ExamNotFoundPage</div>
   )
 }
 
