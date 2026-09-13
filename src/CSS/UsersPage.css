@@ -597,6 +597,12 @@
    MOBILE RESPONSIVENESS
 ================================ */
 
+@media (max-width: 1000px) {
+  .viewToggleGroup {
+    display: none !important;
+  }
+}
+
 /* Tablet & Smaller Devices */
 @media (max-width: 768px) {
   .usersPageContainer {

@@ -52,7 +52,24 @@ const UsersPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<any | null>(null); // For sidebar
-  const usersPerPage = 20;
+  const usersPerPage = 6;
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1000) {
+        setViewMode("grid");
+      }
+    };
+
+    handleResize();
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const filteredUsers = useMemo(() => {
     return dummyUsers.filter((user) => {
