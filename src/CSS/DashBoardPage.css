@@ -1,0 +1,194 @@
+/* ================================
+   DASHBOARD LAYOUT (CSS GRID)
+================================ */
+.dashboardContainer {
+  /* Using a 12-column grid for maximum flexibility */
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 24px;
+  
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* ================================
+   STAT CARDS (Top Row)
+================================ */
+.statBox {
+  /* Each stat box takes up 4 columns out of 12 (so 3 fit in a row) */
+  grid-column: span 4;
+  
+  background: var(--card); /* Uses the card color from your App.css */
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px 24px;
+  
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.statBox:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+}
+
+.statHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.statTitle {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.iconWrapper {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  background: rgba(79, 124, 255, 0.1); /* Very faded primary color */
+  color: var(--primary); /* Primary blue */
+  border-radius: 10px;
+}
+
+.statValue {
+  color: var(--text);
+  font-size: 32px;
+  font-weight: 750;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+/* ================================
+   CHART BOXES (Bottom Row)
+================================ */
+.chartBox {
+  grid-column: span 6;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px 24px 16px 24px; /* Slightly less padding on bottom for scroll */
+  
+  display: flex;
+  flex-direction: column;
+  height: 380px; /* Fixed height so the lists become scrollable */
+}
+
+.chartHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.chartHeader p {
+  margin: 0;
+}
+
+.chartIcon {
+  color: var(--muted);
+}
+
+/* ================================
+   SCROLLABLE DATA LISTS
+================================ */
+.dataListContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  
+  overflow-y: auto; /* Makes it scrollable */
+  padding-right: 8px; /* Room for scrollbar */
+}
+
+/* Custom Scrollbar for the lists */
+.dataListContainer::-webkit-scrollbar {
+  width: 4px;
+}
+.dataListContainer::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dataListContainer::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
+}
+.dataListContainer::-webkit-scrollbar-thumb:hover {
+  background: var(--subtle);
+}
+
+/* Individual Row Items */
+.dataListItem {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.dataLabel {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  width: 120px; /* Keeps labels aligned neatly */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dataTrack {
+  flex: 1;
+  height: 6px;
+  background: rgba(148, 163, 184, 0.1);
+  border-radius: 100px;
+  overflow: hidden;
+}
+
+.dataProgress {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 100px;
+}
+
+.dataValue {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  width: 40px; /* Keeps numbers aligned */
+  text-align: right;
+}
+
+/* ================================
+   MOBILE RESPONSIVENESS
+================================ */
+@media (max-width: 900px) {
+  /* On medium screens, make the charts stack but keep stats side-by-side */
+  .chartBox {
+    grid-column: span 12; 
+  }
+}
+
+@media (max-width: 650px) {
+  .dashboardContainer {
+    padding: 16px;
+    gap: 16px;
+  }
+  
+  /* On small screens, make EVERYTHING stack vertically (1 column) */
+  .statBox {
+    grid-column: span 12;
+  }
+}
