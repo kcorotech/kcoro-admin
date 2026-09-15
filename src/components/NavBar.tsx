@@ -1,11 +1,14 @@
 import "../CSS/NavBar.css";
+import { useSelector } from "react-redux";
+import type { RootState } from "../redux/store";
+import { useEffect } from "react";
 
 interface NavBarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
 }
 
-const tabs = [
+const allTabs = [
   "Dashboard",
   "Users",
   "Success Logs",
@@ -15,10 +18,18 @@ const tabs = [
 ];
 
 export const NavBar = ({ activeTab, setActiveTab }: NavBarProps) => {
+  const appId = useSelector((state: RootState) => state.user.currentAppId);
+
+  const visibleTabs = appId === "myvustudy" ? ["Dashboard", "Users"] : allTabs;
+
+  useEffect(() => {
+    setActiveTab("Dashboard");
+  }, [appId]);
+
   return (
     <nav className="navBarWrapper">
       <ul className="itemContainer">
-        {tabs.map((tab) => (
+        {visibleTabs.map((tab) => (
           <li
             key={tab}
             className={`navItem ${activeTab === tab ? "active" : ""}`}
