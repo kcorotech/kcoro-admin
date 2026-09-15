@@ -1,11 +1,12 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
-import { Auth_Status, EXPIRE_KEY } from "../../utils/Keys";
+import { Auth_Status, CURRENT_APP_ID, EXPIRE_KEY } from "../../utils/Keys";
 import type { UserRole } from "../../utils/enum";
 
 export interface UserState {
   isAuthenticated: boolean;
   role: UserRole | null;
+  currentAppId: string
 }
 
 const getInitialAuthState = (): boolean => {
@@ -32,6 +33,7 @@ const getInitialAuthState = (): boolean => {
 const initialState: UserState = {
   isAuthenticated: getInitialAuthState(),
   role: null,
+  currentAppId:localStorage.getItem(CURRENT_APP_ID) || "myuog",
 };
 
 export const userSlice = createSlice({
@@ -44,6 +46,9 @@ export const userSlice = createSlice({
     set_User_Role: (state, action: PayloadAction<UserRole>) => {
       state.role = action.payload;
     },
+    setCurrentApp: (state, action: PayloadAction<string>) => {
+      state.currentAppId = action.payload;
+    },
     logoutUser: (state) => {
       state.isAuthenticated = false;
       localStorage.removeItem(EXPIRE_KEY);
@@ -54,6 +59,6 @@ export const userSlice = createSlice({
 });
 
 // Action creators are generated for each case reducer function
-export const { set_Is_Authenticated, set_User_Role, logoutUser } = userSlice.actions;
+export const { set_Is_Authenticated, set_User_Role, logoutUser, setCurrentApp } = userSlice.actions;
 
 export default userSlice.reducer;

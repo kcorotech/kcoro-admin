@@ -1,23 +1,30 @@
 import { useState, useRef, useEffect } from "react";
 import { FaRegCircleUser, FaRepeat } from "react-icons/fa6";
 import { HiArrowRightOnRectangle } from "react-icons/hi2";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import "../CSS/TopBar.css";
 import myUog_logo from "../assets/myUog_logo.png";
 import myVU_logo from "../assets/myVU_logo.png";
-import { logoutUser } from "../redux/user/userSlice";
+import { logoutUser, setCurrentApp } from "../redux/user/userSlice";
+import type { RootState } from "../redux/store";
+import { CURRENT_APP_ID } from "../utils/Keys";
 
 const ECOSYSTEM_APPS = [
   { id: "myuog", name: "MyUOG: GPA & Past Papers", uri: myUog_logo },
   { id: "myvustudy", name: "VU Study: VU Student App", uri: myVU_logo },
 ];
 
-const CURRENT_APP_ID = "myuog";
-
 const TopBar = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dispatch = useDispatch();
+
+  const currentAppId = useSelector((state: RootState) => state.user.currentAppId) 
+    || localStorage.getItem(CURRENT_APP_ID) 
+    || "myuog";
+
+  const currentApp = ECOSYSTEM_APPS.find((app) => app.id === currentAppId) || ECOSYSTEM_APPS[0];
+  const otherApps = ECOSYSTEM_APPS.filter((app) => app.id !== currentAppId);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -36,14 +43,19 @@ const TopBar = () => {
     dispatch(logoutUser());
   };
 
-  const otherApps = ECOSYSTEM_APPS.filter((app) => app.id !== CURRENT_APP_ID);
+  const handleAppSwitch = (appId: string) => {
+
+    localStorage.setItem(CURRENT_APP_ID, appId);
+    dispatch(setCurrentApp(appId)); 
+    setIsProfileOpen(false);
+  };
 
   return (
     <header className="topBarContainer">
       <div className="topBarBrand">
-        <img src={myUog_logo} alt="My UOG Logo" className="topBarLogo" />
+        <img src={currentApp.uri} alt={`${currentApp.name} Logo`} className="topBarLogo" />
         <div className="topBarBrandText">
-          <span className="topBarTitle">MyUOG: GPA & Past Papers</span>
+          <span className="topBarTitle">{currentApp.name}</span>
         </div>
       </div>
 
@@ -57,6 +69,7 @@ const TopBar = () => {
           >
             <FaRepeat size={18} />
           </button>
+          
           {isProfileOpen && (
             <div className="profileDropdownMenu">
               <div className="dropdownHeader">
@@ -67,7 +80,12 @@ const TopBar = () => {
               <div className="dropdownSection">
                 <div className="appList">
                   {otherApps.map((app) => (
-                    <div key={app.id} className="appLinkItem">
+                    <div 
+                      key={app.id} 
+                      className="appLinkItem"
+                      onClick={() => handleAppSwitch(app.id)}
+                      style={{ cursor: "pointer" }}
+                    >
                       <img
                         src={app.uri}
                         alt="app_logo"
