@@ -44,10 +44,16 @@ export const userSlice = createSlice({
     set_User_Role: (state, action: PayloadAction<UserRole>) => {
       state.role = action.payload;
     },
+    logoutUser: (state) => {
+      state.isAuthenticated = false;
+      localStorage.removeItem(EXPIRE_KEY);
+      localStorage.removeItem(Auth_Status);
+      localStorage.clear();
+    },
   },
 });
 
 // Action creators are generated for each case reducer function
-export const { set_Is_Authenticated, set_User_Role} = userSlice.actions;
+export const { set_Is_Authenticated, set_User_Role, logoutUser } = userSlice.actions;
 
 export default userSlice.reducer;
