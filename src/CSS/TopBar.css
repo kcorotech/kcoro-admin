@@ -1,0 +1,310 @@
+.topBarContainer {
+  width: 100%;
+  height: 70px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 24px;
+
+  position: sticky;
+  top: 0;
+  z-index: 100;
+
+  background: rgba(7, 10, 18, 0.78);
+
+  border-bottom: 1px solid var(--border);
+
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+}
+
+.topBarBrand {
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+
+  min-width: 0;
+}
+
+.topBarLogo {
+  width: 42px;
+  height: 42px;
+
+  object-fit: contain;
+
+  border-radius: 11px;
+
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.topBarBrandText {
+  display: flex;
+  flex-direction: column;
+
+  gap: 2px;
+}
+
+.topBarTitle {
+  color: var(--text);
+
+  font-size: 17px;
+  font-weight: 750;
+
+  line-height: 1.2;
+
+  letter-spacing: -0.3px;
+}
+
+.topBarSubtitle {
+  color: var(--subtle);
+
+  font-size: 10px;
+  font-weight: 600;
+
+  line-height: 1;
+
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.topBarActions {
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+}
+
+.topBarIconButton {
+  width: 40px;
+  height: 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid rgba(148, 163, 184, 0.12);
+
+  border-radius: 11px;
+
+  background: rgba(15, 23, 42, 0.55);
+
+  color: #94a3b8;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.15s ease,
+    box-shadow 0.2s ease;
+}
+
+.topBarIconButton:hover {
+  color: #f8fafc;
+
+  background: rgba(30, 41, 59, 0.8);
+
+  border-color: rgba(148, 163, 184, 0.25);
+
+  transform: translateY(-1px);
+
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+}
+
+.topBarIconButton:active {
+  transform: translateY(0) scale(0.96);
+}
+
+.topBarIconButton:focus-visible {
+  outline: 3px solid rgba(79, 124, 255, 0.2);
+
+  outline-offset: 2px;
+}
+
+/* ================================
+   PROFILE DROPDOWN / MODAL
+================================ */
+.profileDropdownWrapper {
+  position: relative;
+}
+
+/* Keep button highlighted when menu is open */
+.topBarIconButton.active {
+  background: rgba(30, 41, 59, 0.8);
+  color: #f8fafc;
+  border-color: rgba(148, 163, 184, 0.25);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+}
+
+.profileDropdownMenu {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: 280px;
+  background: rgba(15, 23, 42, 0.95); /* Matches your dark card theme */
+  border: 1px solid var(--border, rgba(148, 163, 184, 0.14));
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 1000;
+
+  /* Smooth entry animation */
+  animation: dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.dropdownHeader {
+  padding: 16px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  background: rgba(7, 10, 18, 0.4);
+}
+
+.dropdownUserName {
+  margin: 0 0 4px 0;
+  color: #f8fafc;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dropdownUserEmail {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.dropdownSection {
+  padding: 12px 8px;
+}
+
+.dropdownSectionTitle {
+  margin: 0 0 8px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.appList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.appLinkItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: #cbd5e1;
+  font-size: 13px;
+  font-weight: 500;
+  transition:
+    background 0.2s,
+    color 0.2s;
+  cursor: pointer;
+}
+
+.appLinkItem:hover {
+  background: rgba(79, 124, 255, 0.1); /* Primary color hover */
+  color: #f8fafc;
+}
+
+.appLinkIcon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(148, 163, 184, 0.1);
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #4f7cff; /* Primary color */
+}
+
+.appLinkItem:hover .appLinkIcon {
+  background: rgba(79, 124, 255, 0.2);
+}
+
+.dropdownFooter {
+  padding: 8px;
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  background: rgba(7, 10, 18, 0.4);
+}
+
+.logoutBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #f43f5e; /* Red color for destructive action */
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.logoutBtn:hover {
+  background: rgba(244, 63, 94, 0.1);
+}
+
+.appNameFont {
+  font-size: 16px;
+  font-weight: bold;
+}
+/* ================================
+   MOBILE
+================================ */
+
+@media (max-width: 600px) {
+  .topBarContainer {
+    height: 62px;
+
+    padding: 0 15px;
+  }
+
+  .topBarLogo {
+    width: 36px;
+    height: 36px;
+
+    border-radius: 9px;
+  }
+
+  .topBarTitle {
+    font-size: 15px;
+  }
+
+  .topBarIconButton {
+    width: 36px;
+    height: 36px;
+
+    border-radius: 9px;
+  }
+}

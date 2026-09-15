@@ -1,0 +1,448 @@
+/* APP */
+
+.app {
+  width: 100%;
+  min-height: 100vh;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  padding: 24px;
+
+  position: relative;
+  overflow: hidden;
+
+  background:
+    radial-gradient(
+      circle at 20% 15%,
+      rgba(79, 124, 255, 0.15),
+      transparent 32%
+    ),
+    radial-gradient(
+      circle at 85% 85%,
+      rgba(99, 102, 241, 0.1),
+      transparent 30%
+    ),
+    #070a12;
+}
+
+.app::before {
+  content: "";
+
+  position: absolute;
+
+  width: 500px;
+  height: 500px;
+
+  top: -300px;
+  left: -200px;
+
+  border-radius: 50%;
+
+  background: rgba(79, 124, 255, 0.12);
+
+  filter: blur(100px);
+
+  pointer-events: none;
+}
+
+.app::after {
+  content: "";
+
+  position: absolute;
+
+  width: 450px;
+  height: 450px;
+
+  right: -250px;
+  bottom: -250px;
+
+  border-radius: 50%;
+
+  background: rgba(99, 102, 241, 0.1);
+
+  filter: blur(100px);
+
+  pointer-events: none;
+}
+
+/* CARD */
+
+.authContainer {
+  width: 100%;
+  max-width: 430px;
+
+  position: relative;
+  z-index: 2;
+
+  padding: 42px;
+
+  background: linear-gradient(
+    145deg,
+    rgba(30, 41, 59, 0.8),
+    rgba(15, 23, 42, 0.72)
+  );
+
+  border: 1px solid var(--border);
+
+  border-radius: 24px;
+
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+
+  box-shadow:
+    0 35px 90px rgba(0, 0, 0, 0.48),
+    0 10px 30px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  animation: cardEnter 0.5s ease-out;
+}
+
+@keyframes cardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* BRAND */
+
+.brandRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  margin-bottom: 34px;
+  justify-content: center;
+}
+
+.brandMark {
+  width: 44px;
+  height: 44px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 13px;
+
+  background: linear-gradient(135deg, #5b8cff, #635bff);
+
+  color: white;
+
+  font-size: 18px;
+  font-weight: 800;
+
+  letter-spacing: -1px;
+
+  box-shadow:
+    0 10px 25px rgba(79, 124, 255, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.brandName {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brandName strong {
+  color: #ffffff;
+
+  font-size: 18px;
+  font-weight: 750;
+
+  letter-spacing: -0.4px;
+}
+
+.brandName span {
+  color: #64748b;
+
+  font-size: 11px;
+  font-weight: 600;
+
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+/* HEADER */
+
+.authHeader {
+  margin-bottom: 28px;
+}
+
+.authHeader h1 {
+  margin: 0;
+
+  color: var(--text);
+
+  font-size: 30px;
+  line-height: 1.15;
+
+  font-weight: 750;
+
+  letter-spacing: -0.9px;
+}
+
+.authHeader p {
+  margin: 10px 0 0;
+
+  color: var(--muted);
+
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* FORM */
+
+.inputGroup {
+  margin-bottom: 18px;
+}
+
+.inputGroup label {
+  display: block;
+
+  margin-bottom: 8px;
+
+  color: #cbd5e1;
+
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* PASSWORD WRAPPER */
+
+.passwordWrapper {
+  position: relative;
+}
+
+.passwordWrapper .inputField {
+  padding-right: 48px;
+}
+
+/* INPUT */
+
+.inputField {
+  width: 100%;
+  height: 50px;
+
+  padding: 0 15px;
+
+  border: 1px solid rgba(148, 163, 184, 0.16);
+
+  border-radius: 12px;
+
+  background: rgba(2, 6, 23, 0.45);
+
+  color: #f8fafc;
+
+  font-family: inherit;
+
+  font-size: 14px;
+  font-weight: 500;
+
+  outline: none;
+
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.inputField:hover {
+  border-color: rgba(148, 163, 184, 0.28);
+}
+
+.inputField:focus {
+  background: rgba(2, 6, 23, 0.62);
+
+  border-color: rgba(79, 124, 255, 0.75);
+
+  box-shadow:
+    0 0 0 3px rgba(79, 124, 255, 0.1),
+    0 0 25px rgba(79, 124, 255, 0.07);
+}
+
+.inputField::placeholder {
+  color: #64748b;
+}
+
+/* PASSWORD TOGGLE */
+
+.passwordToggle {
+  position: absolute;
+
+  right: 14px;
+  top: 50%;
+
+  transform: translateY(-50%);
+
+  padding: 4px;
+
+  border: none;
+
+  background: transparent;
+
+  color: #64748b;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.passwordToggle:hover {
+  color: #cbd5e1;
+}
+
+.passwordToggle:active {
+  transform: translateY(-50%) scale(0.95);
+}
+
+/* FORM OPTIONS */
+
+.formOptions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin: 2px 0 22px;
+}
+
+.rememberMe {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  color: #94a3b8;
+
+  font-size: 12px;
+
+  cursor: pointer;
+}
+
+.rememberMe input {
+  width: 14px;
+  height: 14px;
+
+  margin: 0;
+
+  accent-color: var(--primary);
+
+  cursor: pointer;
+}
+
+.forgotPassword {
+  border: none;
+  padding: 0;
+
+  background: transparent;
+
+  color: #7da2ff;
+
+  font-family: inherit;
+
+  font-size: 12px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.forgotPassword:hover {
+  color: #a5bcff;
+}
+
+/* BUTTON */
+
+.login-btn {
+  width: 100%;
+  height: 50px;
+
+  border: none;
+  border-radius: 12px;
+
+  background: linear-gradient(135deg, #5b8cff, #416ff3);
+
+  color: white;
+
+  font-family: inherit;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 12px 28px rgba(65, 111, 243, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
+}
+
+.login-btn:hover {
+  filter: brightness(1.07);
+
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 16px 34px rgba(65, 111, 243, 0.32),
+    0 0 30px rgba(79, 124, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.login-btn:active {
+  transform: translateY(0);
+}
+
+.login-btn:focus-visible {
+  outline: 3px solid rgba(79, 124, 255, 0.25);
+  outline-offset: 3px;
+}
+
+/* FOOTER */
+
+.authFooter {
+  margin-top: 22px;
+
+  text-align: center;
+
+  color: #475569;
+
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* MOBILE */
+
+@media (max-width: 480px) {
+  .app {
+    padding: 16px;
+  }
+
+  .authContainer {
+    padding: 30px 23px;
+
+    border-radius: 20px;
+  }
+
+  .brandRow {
+    margin-bottom: 30px;
+  }
+
+  .authHeader h1 {
+    font-size: 27px;
+  }
+}
