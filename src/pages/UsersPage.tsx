@@ -8,44 +8,9 @@ import {
   HiXMark,
 } from "react-icons/hi2";
 import "../CSS/UsersPage.css";
-
-// --- GENERATE DUMMY DATA WITH CHAT HISTORY ---
-const generateUsers = (count: number) => {
-  const devices = [
-    "Vivo X90",
-    "iPhone 15 Pro",
-    "Samsung S23 Ultra",
-    "Pixel 8",
-    "Oppo Reno 10",
-  ];
-  const names = ["Haider", "Ali", "Sara", "Zain", "Fatima", "Bilal", "Ayesha"];
-
-  return Array.from({ length: count }, (_, i) => {
-    // Generate dummy chat history for this user
-    const chatHistory = Array.from(
-      { length: Math.floor(Math.random() * 4) + 1 },
-      (_, j) => ({
-        id: `chat-${i}-${j}`,
-        question: `How do I check my past paper for subject ${j + 1}?`,
-        answer: `To check your past paper for subject ${j + 1}, navigate to the Dashboard and click on 'Past Papers'. Select your semester and subject from the dropdown.`,
-      }),
-    );
-
-    return {
-      id: `myuog${387730000 + i}`,
-      name: names[i % names.length],
-      initial: names[i % names.length].charAt(0),
-      device: devices[i % devices.length],
-      version: `1.0.${10 + (i % 8)}`,
-      lastActive: `Sept ${Math.floor(Math.random() * 28) + 1}, 2026`,
-      successLogs: Math.floor(Math.random() * 200),
-      unknownLogs: Math.floor(Math.random() * 30),
-      chatHistory,
-    };
-  });
-};
-
-const dummyUsers = generateUsers(45);
+import { useGetMyUogAppDataQuery } from "../redux/user/userApi";
+import type { RootState } from "../redux/store";
+import { useSelector } from "react-redux";
 
 const UsersPage = () => {
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
@@ -53,6 +18,12 @@ const UsersPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<any | null>(null); // For sidebar
   const usersPerPage = 6;
+
+  const appId = useSelector((state: RootState) => state.user.currentAppId);
+
+  const { data } = useGetMyUogAppDataQuery(undefined, {
+    skip: appId !== "myuog",
+  });
 
   React.useEffect(() => {
     setCurrentPage(1);
@@ -72,26 +43,47 @@ const UsersPage = () => {
   }, []);
 
   const filteredUsers = useMemo(() => {
-    return dummyUsers.filter((user) => {
+    const users = data?.users || [];
+    return users.filter((user: any) => {
       const query = searchQuery.toLowerCase();
       return (
-        user.name.toLowerCase().includes(query) ||
-        user.id.toLowerCase().includes(query) ||
-        user.device.toLowerCase().includes(query)
+        user.Name.toLowerCase().includes(query) ||
+        user.Hardware_ID.toLowerCase().includes(query) ||
+        user.Device_Model.toLowerCase().includes(query)
       );
     });
   }, [searchQuery]);
 
+  const logCounts = useMemo(() => {
+    const successCountMap: Record<string, number> = {};
+    const unknownCountMap: Record<string, number> = {};
+
+    data?.successLogs?.forEach((log: any) => {
+      const id = log.Hardware_ID;
+      if (id) successCountMap[id] = (successCountMap[id] || 0) + 1;
+    });
+
+    data?.unknownLogs?.forEach((log: any) => {
+      const id = log.Hardware_ID;
+      if (id) unknownCountMap[id] = (unknownCountMap[id] || 0) + 1;
+    });
+
+    return { successCountMap, unknownCountMap };
+  }, [data?.successLogs, data?.unknownLogs]);
+
+  const userChatHistory = useMemo(() => {
+    if (!selectedUser || !data?.successLogs) return [];
+    return data.successLogs.filter(
+      (log: any) => log.Hardware_ID === selectedUser.Hardware_ID,
+    );
+  }, [selectedUser, data?.successLogs]);
+
   // --- PAGINATION LOGIC (Applied on Filtered Users) ---
-  const totalUsers = filteredUsers.length;
+  const totalUsers = filteredUsers?.length;
   const totalPages = Math.ceil(totalUsers / usersPerPage) || 1;
   const indexOfLastUser = currentPage * usersPerPage;
   const indexOfFirstUser = indexOfLastUser - usersPerPage;
   const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
-
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery]);
 
   const handleNext = () =>
     setCurrentPage((prev) => Math.min(prev + 1, totalPages));
@@ -151,29 +143,37 @@ const UsersPage = () => {
                 {currentUsers.length > 0 ? (
                   currentUsers.map((user) => (
                     <tr
-                      key={user.id}
+                      key={user.Hardware_ID}
                       onClick={() => setSelectedUser(user)}
                       className="clickableRow"
                     >
                       <td>
                         <div className="userInfo">
-                          <div className="userAvatar">{user.initial}</div>
+                          <div className="userAvatar">
+                            {user.Name
+                              ? user.Name.charAt(0).toUpperCase()
+                              : "U"}
+                          </div>
                           <div className="userDetails">
-                            <span className="userName">{user.name}</span>
-                            <span className="userId">{user.id}</span>
+                            <span className="userName">{user.Name}</span>
+                            <span className="userId">{user.Hardware_ID}</span>
                           </div>
                         </div>
                       </td>
-                      <td className="deviceText">{user.device}</td>
+                      <td className="deviceText">{user.Device_Model}</td>
                       <td>
-                        <span className="versionBadge">{user.version}</span>
+                        <span className="versionBadge">{user.App_Version}</span>
                       </td>
-                      <td className="dateText">{user.lastActive}</td>
+                      <td className="dateText">
+                        {user.Last_Seen || user.Timestamp}
+                      </td>
                       <td className="alignRight successText">
-                        {user.successLogs}
+                        {logCounts.successCountMap[user.Hardware_ID] || 0}
                       </td>
                       <td className="alignRight errorText">
-                        {user.unknownLogs > 0 ? user.unknownLogs : "-"}
+                       {logCounts.unknownCountMap[user.Hardware_ID] > 0
+                          ? logCounts.unknownCountMap[user.Hardware_ID]
+                          : "-"}
                       </td>
                     </tr>
                   ))
@@ -205,36 +205,40 @@ const UsersPage = () => {
               currentUsers.map((user) => (
                 <div
                   className="gridCard clickableCard"
-                  key={user.id}
+                  key={user.Hardware_ID}
                   onClick={() => setSelectedUser(user)}
                 >
                   <div className="cardTop">
-                    <div className="userAvatar">{user.initial}</div>
+                    <div className="userAvatar">
+                      {user.Name ? user.Name.charAt(0).toUpperCase() : "U"}
+                    </div>
                     <div className="cardUserInfo">
-                      <span className="userName">{user.name}</span>
-                      <span className="userId">{user.id}</span>
+                      <span className="userName">{user.Name}</span>
+                      <span className="userId">{user.Hardware_ID}</span>
                     </div>
                   </div>
 
                   <div className="cardBody">
                     <div className="cardRow">
                       <span className="cardLabel">Device</span>
-                      <span className="cardVal">{user.device}</span>
+                      <span className="cardVal">{user.Device_Model}</span>
                     </div>
                     <div className="cardRow">
                       <span className="cardLabel">Version</span>
-                      <span className="versionBadge">{user.version}</span>
+                      <span className="versionBadge">{user.App_Version}</span>
                     </div>
                   </div>
 
                   <div className="cardFooter">
                     <div className="miniStat">
                       <span className="statLabel">Success</span>
-                      <span className="successText">{user.successLogs}</span>
+                      <span className="successText">{logCounts.successCountMap[user.Hardware_ID] || 0}</span>
                     </div>
                     <div className="miniStat">
                       <span className="statLabel">Unknown</span>
-                      <span className="errorText">{user.unknownLogs}</span>
+                      <span className="errorText">{logCounts.unknownCountMap[user.Hardware_ID] > 0
+                          ? logCounts.unknownCountMap[user.Hardware_ID]
+                          : "-"}</span>
                     </div>
                   </div>
                 </div>
@@ -263,10 +267,10 @@ const UsersPage = () => {
           <div className="sidebarPanel" onClick={(e) => e.stopPropagation()}>
             <div className="sidebarHeader">
               <div className="sidebarUserInfo">
-                <div className="userAvatar">{selectedUser.initial}</div>
+                <div className="userAvatar">{selectedUser.Name ? selectedUser.Name.charAt(0).toUpperCase() : "U"}</div>
                 <div>
-                  <h3>{selectedUser.name}</h3>
-                  <p>{selectedUser.id}</p>
+                  <h3>{selectedUser.Name || "Student"}</h3>
+                  <p>{selectedUser.Hardware_ID}</p>
                 </div>
               </div>
               <button
@@ -280,17 +284,17 @@ const UsersPage = () => {
             <div className="sidebarContent">
               <h4 className="chatSectionTitle">Interaction History</h4>
 
-              {selectedUser.chatHistory.length > 0 ? (
+             {userChatHistory.length > 0 ? (
                 <div className="chatList">
-                  {selectedUser.chatHistory.map((chat: any) => (
-                    <div key={chat.id} className="chatExchange">
+                  {userChatHistory.map((chat: any, index: number) => (
+                    <div key={index} className="chatExchange">
                       <div className="chatBubble userBubble">
                         <span className="bubbleLabel">User</span>
-                        <p>{chat.question}</p>
+                        <p>{chat.Question}</p>
                       </div>
                       <div className="chatBubble botBubble">
                         <span className="bubbleLabel">Bot</span>
-                        <p>{chat.answer}</p>
+                        <p>{chat.Bot_Response}</p>
                       </div>
                     </div>
                   ))}
