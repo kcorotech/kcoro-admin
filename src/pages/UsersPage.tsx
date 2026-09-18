@@ -73,11 +73,12 @@ const UsersPage = () => {
 
   const userChatHistory = useMemo(() => {
     if (!selectedUser || !data?.successLogs) return [];
-    return data.successLogs.filter(
-      (log: any) => log.Hardware_ID === selectedUser.Hardware_ID,
-    );
+    
+    return data.successLogs
+      .filter((log: any) => log.Hardware_ID === selectedUser.Hardware_ID)
+      .reverse(); 
   }, [selectedUser, data?.successLogs]);
-
+  
   // --- PAGINATION LOGIC (Applied on Filtered Users) ---
   const totalUsers = filteredUsers?.length;
   const totalPages = Math.ceil(totalUsers / usersPerPage) || 1;
