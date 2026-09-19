@@ -7,9 +7,13 @@ import SuccessLogsPage from "./SuccessLogsPage";
 import UnknownLogsPage from "./UnknownLogsPage";
 import ExamNotFoundPage from "./ExamNotFoundPage";
 import CommonUsersPage from "./CommonUsersPage";
+import { useGetMyUogAppDataQuery } from "../redux/user/userApi";
+import { useSelector } from "react-redux";
+import type { RootState } from "../redux/store";
 
 const MainPage = () => {
   const [activeTab, setActiveTab] = useState<string>("Dashboard");
+  const appId = useSelector((state: RootState) => state.user.currentAppId);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -29,6 +33,11 @@ const MainPage = () => {
         return <DashboardPage />;
     }
   };
+
+  const { isLoading } = useGetMyUogAppDataQuery(undefined, {
+    skip: appId !== "myuog",
+  });
+
 
   return (
     <div className="mainPageLayout">

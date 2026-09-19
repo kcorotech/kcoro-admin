@@ -1,0 +1,1 @@
+export const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/"

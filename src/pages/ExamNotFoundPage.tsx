@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   HiMagnifyingGlass,
   HiXMark,
@@ -6,85 +6,105 @@ import {
   HiChevronRight,
 } from "react-icons/hi2";
 import "../CSS/SuccessLogsPage.css";
+import type { RootState } from "../redux/store";
+import { useSelector } from "react-redux";
+import { useGetMyUogAppDataQuery } from "../redux/user/userApi";
 
-// --- DUMMY DATA ---
-const generateLogs = (count: number) => {
-  const statuses = ["Correct", "Review", "Not found"];
-  const users = ["Haider Ali", "Sara Khan", "Zain Ahmed", "Fatima", "Bilal"];
-  const versions = ["1.0.15", "1.0.16", "1.0.17", "1.0.18"];
+// Helper to reliably parse your dates into milliseconds for perfect sorting
+const parseLogTimestamp = (dateStr: string): number => {
+  if (!dateStr) return 0;
+  try {
+    if (dateStr.includes("T")) {
+      const parsedIso = new Date(dateStr).getTime();
+      if (!isNaN(parsedIso)) return parsedIso;
+    }
 
-  return Array.from({ length: count }, (_, i) => ({
-    id: `log-${i}`,
-    time: i === 0 ? "10:25 PM" : i < 5 ? "Yesterday" : `14 Feb 2026`,
-    user: users[i % users.length],
-    initial: users[i % users.length].charAt(0),
-    version: versions[i % versions.length],
-    question:
-      i % 2 === 0
-        ? "Where is UoG Located?"
-        : "Provide past papers for CS Semester 4",
-    response:
-      i % 2 === 0
-        ? "The University of Gujrat (UoG) is located in Gujrat, Punjab, Pakistan. The main campus, Hafiz Hayat Campus, is situated on Jalalpur Jattan Road..."
-        : "I have found 3 past papers for Computer Science Semester 4. They include Data Structures, Database Systems, and Operating Systems.",
-    status: statuses[i % statuses.length],
-  }));
+    const clean = dateStr.replace(/'/g, "").trim().toLowerCase();
+    const parts = clean.split(" ");
+    if (parts.length < 2) return new Date(clean).getTime() || 0;
+
+    const [dayStr, monthStr, yearStr] = parts[0].split("/");
+    const timeParts = parts[1].split(":");
+    let hours = parseInt(timeParts[0], 10) || 0;
+    const minutes = parseInt(timeParts[1], 10) || 0;
+    const modifier = parts[2];
+
+    if (modifier === "pm" && hours < 12) hours += 12;
+    if (modifier === "am" && hours === 12) hours = 0;
+
+    const months: Record<string, number> = {
+      jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+      jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+    };
+
+    const month = months[monthStr] ?? 0;
+    const day = parseInt(dayStr, 10) || 1;
+    const year = parseInt(yearStr, 10) || 2026;
+
+    return new Date(year, month, day, hours, minutes).getTime();
+  } catch {
+    return 0;
+  }
 };
 
-const dummyLogs = generateLogs(65);
+const isNotFoundLog = (raw: string): boolean => {
+  const val = (raw || "").toLowerCase().trim();
+  return val.includes("not found") || val.includes("not-found") || val.includes("wrong");
+};
 
 const ExamNotFoundPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("All");
   const [selectedLog, setSelectedLog] = useState<any | null>(null);
   const logsPerPage = 12;
 
-  // --- FILTER LOGIC ---
+  const appId = useSelector((state: RootState) => state.user.currentAppId);
+
+  const { data } = useGetMyUogAppDataQuery(undefined, {
+    skip: appId !== "myuog",
+  });
+
+  // --- FILTER & SORT LOGIC ---
   const filteredLogs = useMemo(() => {
-    return dummyLogs.filter((log) => {
-      const query = searchQuery.toLowerCase();
-      const matchesSearch =
-        log.user.toLowerCase().includes(query) ||
-        log.question.toLowerCase().includes(query) ||
-        log.response.toLowerCase().includes(query) ||
-        log.version.includes(query);
+    const rawLogs = data?.successLogs || [];
 
-      const matchesStatus = activeTab === "All" || log.status === activeTab;
-      return matchesSearch && matchesStatus;
+    const notFoundLogs = rawLogs.filter((log: any) => isNotFoundLog(log.Validation));
+
+    const sortedLogs = notFoundLogs.sort(
+      (a: any, b: any) => parseLogTimestamp(b?.Timestamp) - parseLogTimestamp(a?.Timestamp)
+    );
+
+    return sortedLogs.filter((log: any) => {
+      const query = searchQuery.toLowerCase().trim();
+
+      const safeName = String(log?.Name || "").toLowerCase();
+      const safeQuestion = String(log?.Question || "").toLowerCase();
+      const safeResponse = String(log?.Bot_Response || "").toLowerCase();
+      const safeVersion = String(log?.App_Version || "").toLowerCase();
+
+      return (
+        !query ||
+        safeName.includes(query) ||
+        safeQuestion.includes(query) ||
+        safeResponse.includes(query) ||
+        safeVersion.includes(query)
+      );
     });
-  }, [searchQuery, activeTab]);
+  }, [data?.successLogs, searchQuery]);
 
-  // Pagination
+  // --- SAFE PAGINATION LOGIC ---
   const totalLogs = filteredLogs.length;
-  const totalPages = Math.ceil(totalLogs / logsPerPage) || 1;
-  const indexOfLastLog = currentPage * logsPerPage;
-  const indexOfFirstLog = indexOfLastLog - logsPerPage;
+  const totalPages = Math.max(1, Math.ceil(totalLogs / logsPerPage));
+  const safePage = Math.min(currentPage, totalPages);
+  const indexOfLastLog = safePage * logsPerPage;
+  const indexOfFirstLog = Math.max(0, indexOfLastLog - logsPerPage);
   const currentLogs = filteredLogs.slice(indexOfFirstLog, indexOfLastLog);
-
-  // Reset pagination if filters change
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, activeTab]);
-
-  const getStatusClass = (status: string) => {
-    switch (status) {
-      case "Correct":
-        return "status-correct";
-      case "Review":
-        return "status-review";
-      case "Not found":
-        return "status-error";
-      default:
-        return "";
-    }
-  };
 
   return (
     <div className="chatLayoutContainer">
       <div className="chatHeader">
         <div className="titleRow">
-          <h2 className="pageTitle">ExamNotFound Logs</h2>
+          <h2 className="pageTitle">Missing Exams</h2>
           <span className="totalBadge">{totalLogs} Entries</span>
         </div>
       </div>
@@ -96,7 +116,10 @@ const ExamNotFoundPage = () => {
             type="text"
             placeholder="Search users, questions, or versions..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1); 
+            }}
           />
         </div>
       </div>
@@ -104,36 +127,44 @@ const ExamNotFoundPage = () => {
       <div className="chatMainBox">
         <div className="chatList">
           {currentLogs.length > 0 ? (
-            currentLogs.map((log) => (
+            currentLogs.map((log: any, index: number) => (
               <div
                 className="chatRow"
-                key={log.id}
+                key={`${log?.Hardware_ID || "unknown"}-${index}`}
                 onClick={() => setSelectedLog(log)}
               >
-                <div className="chatAvatar">{log.initial}</div>
+                <div className="chatAvatar">
+                  {log?.Name ? log.Name.charAt(0).toUpperCase() : "U"}
+                </div>
                 <div className="chatContent">
                   <div className="chatContentTop">
-                    <span className="chatUserName">{log.user}</span>
-                    <span className="chatTime">{log.time}</span>
+                    <span className="chatUserName">{log?.Name || "Student"}</span>
+                    <span className="chatTime">{log?.Timestamp || "Unknown Time"}</span>
                   </div>
 
                   <div className="chatContentMiddle">
-                    <span className="chatVersion">v{log.version}</span>
-                    <span className="chatQuestion">{log.question}</span>
+                    <span className="chatVersion">v{log?.App_Version || "Unknown"}</span>
+                    <span className="chatQuestion">{log?.Question || "No Question Provided"}</span>
                   </div>
 
                   <div className="chatContentBottom">
-                    <p className="chatResponseSnippet">{log.response}</p>
+                    <p className="chatResponseSnippet">{log?.Bot_Response || "No Response"}</p>
                   </div>
+                </div>
+                <div className="chatRightAction">
+                  <span className="chatBadge status-error">
+                    Not found
+                  </span>
                 </div>
               </div>
             ))
           ) : (
             <div className="chatEmptyState">
-              No conversations match your filters.
+              No missing exams match your search.
             </div>
           )}
         </div>
+        
         {totalLogs > 0 && (
           <div className="chatPagination">
             <p className="pageText">
@@ -144,16 +175,14 @@ const ExamNotFoundPage = () => {
               <button
                 className="pageBtn"
                 onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
+                disabled={safePage === 1}
               >
                 <HiChevronLeft size={16} />
               </button>
               <button
                 className="pageBtn"
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                }
-                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={safePage === totalPages}
               >
                 <HiChevronRight size={16} />
               </button>
@@ -168,12 +197,12 @@ const ExamNotFoundPage = () => {
             <div className="modalHeader">
               <div className="modalUserGroup">
                 <div className="chatAvatar smallAvatar">
-                  {selectedLog.initial}
+                  {selectedLog?.Name ? selectedLog.Name.charAt(0).toUpperCase() : "U"}
                 </div>
                 <div>
-                  <h3>{selectedLog.user}</h3>
+                  <h3>{selectedLog?.Name || "Student"}</h3>
                   <p>
-                    {selectedLog.time} • v{selectedLog.version}
+                    {selectedLog?.Timestamp || "Unknown Time"} • v{selectedLog?.App_Version || "Unknown"}
                   </p>
                 </div>
               </div>
@@ -188,14 +217,17 @@ const ExamNotFoundPage = () => {
             <div className="modalBody">
               <div className="messageBubble userMessage">
                 <span className="bubbleLabel">Question</span>
-                <p>{selectedLog.question}</p>
+                <p>{selectedLog?.Question || "No Question Provided"}</p>
               </div>
 
               <div className="messageBubble botMessage">
                 <div className="bubbleTop">
                   <span className="bubbleLabel">Bot Response</span>
+                  <span className="chatBadge status-error">
+                    Not found
+                  </span>
                 </div>
-                <p>{selectedLog.response}</p>
+                <p>{selectedLog?.Bot_Response || "No Response"}</p>
               </div>
             </div>
           </div>
