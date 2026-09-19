@@ -2,30 +2,94 @@ import { HiMiniUsers, HiMiniCalendarDays, HiMiniBolt } from "react-icons/hi2";
 import { FaMobileAlt } from "react-icons/fa";
 import { BiGitBranch } from "react-icons/bi";
 import "../CSS/DashBoardPage.css";
-
-// --- DUMMY DATA ---
-const versionData = [
-  { version: "v2.4.1", users: 850, percent: 56 },
-  { version: "v2.4.0", users: 320, percent: 21 },
-  { version: "v2.3.5", users: 150, percent: 10 },
-  { version: "v2.3.0", users: 90, percent: 6 },
-  { version: "v2.0.1", users: 50, percent: 3 },
-  { version: "v1.9.0", users: 30, percent: 2 },
-  { version: "v1.8.5", users: 10, percent: 1 },
-];
-
-const deviceData = [
-  { name: "iPhone 15 Pro", users: 450, percent: 30 },
-  { name: "iPhone 13", users: 320, percent: 21 },
-  { name: "Samsung Galaxy S23", users: 280, percent: 18 },
-  { name: "iPhone 14 Pro Max", users: 210, percent: 14 },
-  { name: "Google Pixel 8", users: 150, percent: 10 },
-  { name: "Samsung Galaxy A54", users: 90, percent: 6 },
-  { name: "Xiaomi 13 Pro", users: 60, percent: 4 },
-  { name: "OnePlus 11", users: 40, percent: 2 },
-];
+import { useGetMyUogAppDataQuery } from "../redux/user/userApi";
+import type { RootState } from "../redux/store";
+import { useSelector } from "react-redux";
+import { useMemo } from "react";
 
 const DashboardPage = () => {
+  const appId = useSelector((state: RootState) => state.user.currentAppId);
+
+  const { data } = useGetMyUogAppDataQuery(undefined, {
+    skip: appId !== "myuog",
+  });
+
+  const { totalUsers, dailyActive, monthlyActive, versionData, deviceData } =
+    useMemo(() => {
+      const users = data?.users || [];
+
+      if (users.length === 0) {
+        return {
+          totalUsers: 0,
+          dailyActive: 0,
+          monthlyActive: 0,
+          versionData: [],
+          deviceData: [],
+        };
+      }
+
+      const now = new Date().getTime();
+      const oneDayInMs = 24 * 60 * 60 * 1000;
+      const thirtyDaysInMs = 30 * oneDayInMs;
+
+      let dailyCount = 0;
+      let monthlyCount = 0;
+
+      const versionCountMap: Record<string, number> = {};
+      const deviceCountMap: Record<string, number> = {};
+
+      users.forEach((user: any) => {
+        const dateString = user.Last_Seen || user.Timestamp;
+
+        if (dateString) {
+          const lastSeenDate = new Date(dateString).getTime();
+          const timeDifference = now - lastSeenDate;
+
+          if (timeDifference <= oneDayInMs) {
+            dailyCount++;
+          }
+
+          if (timeDifference <= thirtyDaysInMs) {
+            monthlyCount++;
+          }
+        }
+
+        const version = user.App_Version || "Unknown";
+        versionCountMap[version] = (versionCountMap[version] || 0) + 1;
+
+        const device = user.Device_Model || "Unknown";
+        deviceCountMap[device] = (deviceCountMap[device] || 0) + 1;
+      });
+
+      const total = users.length;
+
+      const formattedVersionData = Object.entries(versionCountMap)
+        .map(([version, count]) => ({
+          version: version.startsWith("v") ? version : `v${version}`,
+          users: count,
+          percent: Math.round((count / total) * 100),
+        }))
+        .sort((a, b) => b.users - a.users)
+        .slice(0, 7);
+
+      const formattedDeviceData = Object.entries(deviceCountMap)
+        .map(([name, count]) => ({
+          name,
+          users: count,
+          percent: Math.round((count / total) * 100),
+        }))
+        .sort((a, b) => b.users - a.users)
+        .slice(0, 8);
+
+      return {
+        totalUsers: users.length,
+        dailyActive: dailyCount,
+        monthlyActive: monthlyCount,
+        versionData: formattedVersionData,
+        deviceData: formattedDeviceData,
+      };
+    }, [data?.users]);
+
   return (
     <div className="dashboardContainer">
       <div className="statBox">
@@ -35,7 +99,7 @@ const DashboardPage = () => {
             <HiMiniUsers size={18} />
           </div>
         </div>
-        <p className="statValue">1,500</p>
+        <p className="statValue">{totalUsers}</p>
       </div>
 
       <div className="statBox">
@@ -45,7 +109,7 @@ const DashboardPage = () => {
             <HiMiniCalendarDays size={18} />
           </div>
         </div>
-        <p className="statValue">200</p>
+        <p className="statValue">{monthlyActive}</p>
       </div>
 
       <div className="statBox">
@@ -55,7 +119,7 @@ const DashboardPage = () => {
             <HiMiniBolt size={18} />
           </div>
         </div>
-        <p className="statValue">10</p>
+        <p className="statValue">{dailyActive}</p>
       </div>
       <div className="chartBox versionBox">
         <div className="chartHeader">

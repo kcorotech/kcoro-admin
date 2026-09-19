@@ -8,85 +8,98 @@ import {
   HiXMark,
 } from "react-icons/hi2";
 import "../CSS/UsersPage.css";
-
-// --- GENERATE DUMMY DATA WITH CHAT HISTORY ---
-const generateUsers = (count: number) => {
-  const devices = [
-    "Vivo X90",
-    "iPhone 15 Pro",
-    "Samsung S23 Ultra",
-    "Pixel 8",
-    "Oppo Reno 10",
-  ];
-  const names = ["Haider", "Ali", "Sara", "Zain", "Fatima", "Bilal", "Ayesha"];
-
-  return Array.from({ length: count }, (_, i) => {
-    // Generate dummy chat history for this user
-    const chatHistory = Array.from(
-      { length: Math.floor(Math.random() * 4) + 1 },
-      (_, j) => ({
-        id: `chat-${i}-${j}`,
-        question: `How do I check my past paper for subject ${j + 1}?`,
-        answer: `To check your past paper for subject ${j + 1}, navigate to the Dashboard and click on 'Past Papers'. Select your semester and subject from the dropdown.`,
-      }),
-    );
-
-    return {
-      id: `myuog${387730000 + i}`,
-      name: names[i % names.length],
-      initial: names[i % names.length].charAt(0),
-      device: devices[i % devices.length],
-      version: `1.0.${10 + (i % 8)}`,
-      lastActive: `Sept ${Math.floor(Math.random() * 28) + 1}, 2026`,
-      successLogs: Math.floor(Math.random() * 200),
-      unknownLogs: Math.floor(Math.random() * 30),
-      chatHistory,
-    };
-  });
-};
-
-const dummyUsers = generateUsers(45);
+import { useGetMyUogAppDataQuery } from "../redux/user/userApi";
+import type { RootState } from "../redux/store";
+import { useSelector } from "react-redux";
 
 const CommonUsersPage = () => {
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedUser, setSelectedUser] = useState<any | null>(null); // For sidebar
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const usersPerPage = 6;
 
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery]);
+  const appId = useSelector((state: RootState) => state.user.currentAppId);
+
+  const { data, isLoading } = useGetMyUogAppDataQuery(undefined, {
+    skip: appId !== "myuog",
+  });
 
   React.useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 1000) {
-        setViewMode("grid");
-      }
+      if (window.innerWidth < 1000) setViewMode("grid");
     };
-
     handleResize();
-
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // --- FILTER & INTERSECTION LOGIC ---
   const filteredUsers = useMemo(() => {
-    return dummyUsers.filter((user) => {
-      const query = searchQuery.toLowerCase();
-      return (
-        user.name.toLowerCase().includes(query) ||
-        user.id.toLowerCase().includes(query) ||
-        user.device.toLowerCase().includes(query)
-      );
-    });
-  }, [searchQuery]);
+    const users = data?.users || [];
+    const successLogs = data?.successLogs || [];
+    const unknownLogs = data?.unknownLogs || [];
 
-  // --- PAGINATION LOGIC (Applied on Filtered Users) ---
+    const successCountMap: Record<string, number> = {};
+    const unknownCountMap: Record<string, number> = {};
+
+    successLogs.forEach((log: any) => {
+      const id = log.Hardware_ID;
+      if (id) successCountMap[id] = (successCountMap[id] || 0) + 1;
+    });
+
+    unknownLogs.forEach((log: any) => {
+      const id = log.Hardware_ID;
+      if (id) unknownCountMap[id] = (unknownCountMap[id] || 0) + 1;
+    });
+
+    return users
+      .filter((user: any) => {
+        const id = user.Hardware_ID;
+
+        const hasBothLogs = successCountMap[id] > 0 && unknownCountMap[id] > 0;
+        if (!hasBothLogs) return false;
+
+        const query = searchQuery.toLowerCase().trim();
+
+        const safeName = String(user.Name || "").toLowerCase();
+        const safeId = String(id || "").toLowerCase();
+        const safeDevice = String(user.Device_Model || "").toLowerCase();
+
+        return (
+          !query ||
+          safeName.includes(query) ||
+          safeId.includes(query) ||
+          safeDevice.includes(query)
+        );
+      })
+      .map((user: any) => ({
+        ...user,
+        successCount: successCountMap[user.Hardware_ID] || 0,
+        unknownCount: unknownCountMap[user.Hardware_ID] || 0,
+      }));
+  }, [data, searchQuery]);
+
+  const userChatHistory = useMemo(() => {
+    if (!selectedUser) return [];
+
+    const sLogs = (data?.successLogs || [])
+      .filter((log: any) => log.Hardware_ID === selectedUser.Hardware_ID)
+      .map((log: any) => ({ ...log, isUnknown: false }));
+
+    const uLogs = (data?.unknownLogs || [])
+      .filter((log: any) => log.Hardware_ID === selectedUser.Hardware_ID)
+      .map((log: any) => ({ ...log, isUnknown: true }));
+
+    return [...sLogs, ...uLogs];
+  }, [selectedUser, data]);
+
+  // --- SAFE PAGINATION LOGIC ---
   const totalUsers = filteredUsers.length;
-  const totalPages = Math.ceil(totalUsers / usersPerPage) || 1;
-  const indexOfLastUser = currentPage * usersPerPage;
-  const indexOfFirstUser = indexOfLastUser - usersPerPage;
+  const totalPages = Math.max(1, Math.ceil(totalUsers / usersPerPage));
+  const safePage = Math.min(currentPage, totalPages);
+  const indexOfLastUser = safePage * usersPerPage;
+  const indexOfFirstUser = Math.max(0, indexOfLastUser - usersPerPage);
   const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
 
   React.useEffect(() => {
@@ -97,12 +110,16 @@ const CommonUsersPage = () => {
     setCurrentPage((prev) => Math.min(prev + 1, totalPages));
   const handlePrev = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
 
+  if (isLoading) {
+    return <div className="loadingState">Loading common users...</div>;
+  }
+
   return (
     <div className="usersPageContainer">
       <div className="usersHeaderArea">
         <div className="titleGroup">
-          <h2 className="pageTitle">Users</h2>
-          <div className="totalBadge">{totalUsers} Total</div>
+          <h2 className="pageTitle">Common Users</h2>
+          <div className="totalBadge">{totalUsers} Users</div>
         </div>
 
         <div className="headerActions">
@@ -149,38 +166,48 @@ const CommonUsersPage = () => {
               </thead>
               <tbody>
                 {currentUsers.length > 0 ? (
-                  currentUsers.map((user) => (
+                  currentUsers.map((user, index) => (
                     <tr
-                      key={user.id}
+                      key={`${user.Hardware_ID}-${index}`}
                       onClick={() => setSelectedUser(user)}
                       className="clickableRow"
                     >
                       <td>
                         <div className="userInfo">
-                          <div className="userAvatar">{user.initial}</div>
+                          <div className="userAvatar">
+                            {user.Name
+                              ? user.Name.charAt(0).toUpperCase()
+                              : "U"}
+                          </div>
                           <div className="userDetails">
-                            <span className="userName">{user.name}</span>
-                            <span className="userId">{user.id}</span>
+                            <span className="userName">
+                              {user.Name || "Student"}
+                            </span>
+                            <span className="userId">{user.Hardware_ID}</span>
                           </div>
                         </div>
                       </td>
-                      <td className="deviceText">{user.device}</td>
+                      <td className="deviceText">{user.Device_Model}</td>
                       <td>
-                        <span className="versionBadge">{user.version}</span>
+                        <span className="versionBadge">
+                          v{user.App_Version}
+                        </span>
                       </td>
-                      <td className="dateText">{user.lastActive}</td>
+                      <td className="dateText">
+                        {user.Last_Seen || user.Timestamp}
+                      </td>
                       <td className="alignRight successText">
-                        {user.successLogs}
+                        {user.successCount}
                       </td>
                       <td className="alignRight errorText">
-                        {user.unknownLogs > 0 ? user.unknownLogs : "-"}
+                        {user.unknownCount}
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
                     <td colSpan={6} className="emptyState">
-                      No users found.
+                      No common users found.
                     </td>
                   </tr>
                 )}
@@ -188,73 +215,79 @@ const CommonUsersPage = () => {
             </table>
           </div>
 
-          <PaginationFooter
-            start={totalUsers === 0 ? 0 : indexOfFirstUser + 1}
-            end={Math.min(indexOfLastUser, totalUsers)}
-            total={totalUsers}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPrev={handlePrev}
-            onNext={handleNext}
-          />
+          {totalUsers > 0 && (
+            <PaginationFooter
+              start={indexOfFirstUser + 1}
+              end={Math.min(indexOfLastUser, totalUsers)}
+              total={totalUsers}
+              currentPage={safePage}
+              totalPages={totalPages}
+              onPrev={handlePrev}
+              onNext={handleNext}
+            />
+          )}
         </div>
       ) : (
         <div className="gridFlow">
           <div className="gridWrapper">
             {currentUsers.length > 0 ? (
-              currentUsers.map((user) => (
+              currentUsers.map((user, index) => (
                 <div
                   className="gridCard clickableCard"
-                  key={user.id}
+                  key={`${user.Hardware_ID}-${index}`}
                   onClick={() => setSelectedUser(user)}
                 >
                   <div className="cardTop">
-                    <div className="userAvatar">{user.initial}</div>
+                    <div className="userAvatar">
+                      {user.Name ? user.Name.charAt(0).toUpperCase() : "U"}
+                    </div>
                     <div className="cardUserInfo">
-                      <span className="userName">{user.name}</span>
-                      <span className="userId">{user.id}</span>
+                      <span className="userName">{user.Name || "Student"}</span>
+                      <span className="userId">{user.Hardware_ID}</span>
                     </div>
                   </div>
 
                   <div className="cardBody">
                     <div className="cardRow">
                       <span className="cardLabel">Device</span>
-                      <span className="cardVal">{user.device}</span>
+                      <span className="cardVal">{user.Device_Model}</span>
                     </div>
                     <div className="cardRow">
                       <span className="cardLabel">Version</span>
-                      <span className="versionBadge">{user.version}</span>
+                      <span className="versionBadge">v{user.App_Version}</span>
                     </div>
                   </div>
 
                   <div className="cardFooter">
                     <div className="miniStat">
                       <span className="statLabel">Success</span>
-                      <span className="successText">{user.successLogs}</span>
+                      <span className="successText">{user.successCount}</span>
                     </div>
                     <div className="miniStat">
                       <span className="statLabel">Unknown</span>
-                      <span className="errorText">{user.unknownLogs}</span>
+                      <span className="errorText">{user.unknownCount}</span>
                     </div>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="emptyState">No users found.</div>
+              <div className="emptyState">No common users found.</div>
             )}
           </div>
 
-          <div className="gridPaginationWrapper">
-            <PaginationFooter
-              start={totalUsers === 0 ? 0 : indexOfFirstUser + 1}
-              end={Math.min(indexOfLastUser, totalUsers)}
-              total={totalUsers}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPrev={handlePrev}
-              onNext={handleNext}
-            />
-          </div>
+          {totalUsers > 0 && (
+            <div className="gridPaginationWrapper">
+              <PaginationFooter
+                start={indexOfFirstUser + 1}
+                end={Math.min(indexOfLastUser, totalUsers)}
+                total={totalUsers}
+                currentPage={safePage}
+                totalPages={totalPages}
+                onPrev={handlePrev}
+                onNext={handleNext}
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -263,10 +296,14 @@ const CommonUsersPage = () => {
           <div className="sidebarPanel" onClick={(e) => e.stopPropagation()}>
             <div className="sidebarHeader">
               <div className="sidebarUserInfo">
-                <div className="userAvatar">{selectedUser.initial}</div>
+                <div className="userAvatar">
+                  {selectedUser.Name
+                    ? selectedUser.Name.charAt(0).toUpperCase()
+                    : "U"}
+                </div>
                 <div>
-                  <h3>{selectedUser.name}</h3>
-                  <p>{selectedUser.id}</p>
+                  <h3>{selectedUser.Name || "Student"}</h3>
+                  <p>{selectedUser.Hardware_ID}</p>
                 </div>
               </div>
               <button
@@ -278,20 +315,44 @@ const CommonUsersPage = () => {
             </div>
 
             <div className="sidebarContent">
-              <h4 className="chatSectionTitle">Interaction History</h4>
+              <h4 className="chatSectionTitle">Combined Interaction History</h4>
 
-              {selectedUser.chatHistory.length > 0 ? (
+              {userChatHistory.length > 0 ? (
                 <div className="chatList">
-                  {selectedUser.chatHistory.map((chat: any) => (
-                    <div key={chat.id} className="chatExchange">
+                  {userChatHistory.map((chat: any, index: number) => (
+                    <div key={index} className="chatExchange">
                       <div className="chatBubble userBubble">
-                        <span className="bubbleLabel">User</span>
-                        <p>{chat.question}</p>
+                        <span className="bubbleLabel">
+                          User ({chat.Timestamp})
+                        </span>
+                        <p>{chat.Question}</p>
                       </div>
-                      <div className="chatBubble botBubble">
-                        <span className="bubbleLabel">Bot</span>
-                        <p>{chat.answer}</p>
-                      </div>
+
+                      {chat.isUnknown ? (
+                        <div
+                          className="chatBubble botBubble"
+                          style={{ background: "rgba(244, 63, 94, 0.1)" }}
+                        >
+                          <span
+                            className="bubbleLabel"
+                            style={{ color: "#f43f5e" }}
+                          >
+                            Unknown / Unanswered
+                          </span>
+                          <p style={{ color: "#f43f5e", fontStyle: "italic" }}>
+                            {chat.comments
+                              ? `Admin Note: ${chat.comments}`
+                              : "No bot response available."}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="chatBubble botBubble">
+                          <span className="bubbleLabel">
+                            Bot ({chat.Validation})
+                          </span>
+                          <p>{chat.Bot_Response}</p>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
