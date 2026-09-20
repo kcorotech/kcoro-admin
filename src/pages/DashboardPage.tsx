@@ -14,81 +14,100 @@ const DashboardPage = () => {
     skip: appId !== "myuog",
   });
 
-  const { totalUsers, dailyActive, monthlyActive, versionData, deviceData } =
-    useMemo(() => {
-      const users = data?.users || [];
+  const {
+    totalUsers,
+    dailyActive,
+    monthlyActive,
+    currentMonthDay,
+    currentHour,
+    versionData,
+    deviceData,
+  } = useMemo(() => {
+    const users = data?.users || [];
 
-      if (users.length === 0) {
-        return {
-          totalUsers: 0,
-          dailyActive: 0,
-          monthlyActive: 0,
-          versionData: [],
-          deviceData: [],
-        };
-      }
+    if (users.length === 0) {
+      return {
+        totalUsers: 0,
+        dailyActive: 0,
+        monthlyActive: 0,
+        currentMonthDay: 1,
+        currentHour: 0,
+        versionData: [],
+        deviceData: [],
+      };
+    }
 
-      const now = new Date().getTime();
-      const oneDayInMs = 24 * 60 * 60 * 1000;
-      const thirtyDaysInMs = 30 * oneDayInMs;
+    const now = new Date();
+    const nowMs = now.getTime();
+    const currentDay = now.getDate();
+    const currentHour = now.getHours();
 
-      let dailyCount = 0;
-      let monthlyCount = 0;
+    const startOfCurrentMonthMs = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1,
+    ).getTime();
 
-      const versionCountMap: Record<string, number> = {};
-      const deviceCountMap: Record<string, number> = {};
+    const oneDayInMs = 24 * 60 * 60 * 1000;
 
-      users.forEach((user: any) => {
-        const dateString = user.Last_Seen || user.Timestamp;
+    let dailyCount = 0;
+    let monthlyCount = 0;
 
-        if (dateString) {
-          const lastSeenDate = new Date(dateString).getTime();
-          const timeDifference = now - lastSeenDate;
+    const versionCountMap: Record<string, number> = {};
+    const deviceCountMap: Record<string, number> = {};
 
-          if (timeDifference <= oneDayInMs) {
-            dailyCount++;
-          }
+    users.forEach((user: any) => {
+      const dateString = user.Last_Seen || user.Timestamp;
 
-          if (timeDifference <= thirtyDaysInMs) {
-            monthlyCount++;
-          }
+      if (dateString) {
+        const lastSeenMs = new Date(dateString).getTime();
+
+        if (nowMs - lastSeenMs <= oneDayInMs) {
+          dailyCount++;
         }
 
-        const version = user.App_Version || "Unknown";
-        versionCountMap[version] = (versionCountMap[version] || 0) + 1;
+        if (lastSeenMs >= startOfCurrentMonthMs) {
+          monthlyCount++;
+        }
+      }
 
-        const device = user.Device_Model || "Unknown";
-        deviceCountMap[device] = (deviceCountMap[device] || 0) + 1;
-      });
+      const version = user.App_Version || "Unknown";
+      versionCountMap[version] = (versionCountMap[version] || 0) + 1;
 
-      const total = users.length;
+      const device = user.Device_Model || "Unknown";
+      deviceCountMap[device] = (deviceCountMap[device] || 0) + 1;
+    });
 
-      const formattedVersionData = Object.entries(versionCountMap)
-        .map(([version, count]) => ({
-          version: version.startsWith("v") ? version : `v${version}`,
-          users: count,
-          percent: Math.round((count / total) * 100),
-        }))
-        .sort((a, b) => b.users - a.users)
-        .slice(0, 7);
+    const total = users.length;
 
-      const formattedDeviceData = Object.entries(deviceCountMap)
-        .map(([name, count]) => ({
-          name,
-          users: count,
-          percent: Math.round((count / total) * 100),
-        }))
-        .sort((a, b) => b.users - a.users)
-        .slice(0, 8);
+    const formattedVersionData = Object.entries(versionCountMap)
+      .map(([version, count]) => ({
+        version: version.startsWith("v") ? version : `v${version}`,
+        users: count,
+        percent: Math.round((count / total) * 100),
+      }))
+      .sort((a, b) => b.users - a.users)
+      .slice(0, 7);
 
-      return {
-        totalUsers: users.length,
-        dailyActive: dailyCount,
-        monthlyActive: monthlyCount,
-        versionData: formattedVersionData,
-        deviceData: formattedDeviceData,
-      };
-    }, [data?.users]);
+    const formattedDeviceData = Object.entries(deviceCountMap)
+      .map(([name, count]) => ({
+        name,
+        users: count,
+        percent: Math.round((count / total) * 100),
+      }))
+      .sort((a, b) => b.users - a.users)
+      .slice(0, 8);
+
+    return {
+      totalUsers: users.length,
+      dailyActive: dailyCount,
+      monthlyActive: monthlyCount,
+      currentMonthDay: currentDay,
+      currentHour: currentHour,
+      versionData: formattedVersionData,
+      deviceData: formattedDeviceData,
+    };
+  }, [data?.users]);
 
   return (
     <div className="dashboardContainer">
@@ -104,7 +123,7 @@ const DashboardPage = () => {
 
       <div className="statBox">
         <div className="statHeader">
-          <p className="statTitle">Monthly Active</p>
+          <p className="statTitle">Monthly Active (Day {currentMonthDay})</p>
           <div className="iconWrapper">
             <HiMiniCalendarDays size={18} />
           </div>
@@ -114,13 +133,14 @@ const DashboardPage = () => {
 
       <div className="statBox">
         <div className="statHeader">
-          <p className="statTitle">Daily Active</p>
+          <p className="statTitle">Daily Active ({currentHour}/24h)</p>
           <div className="iconWrapper">
             <HiMiniBolt size={18} />
           </div>
         </div>
         <p className="statValue">{dailyActive}</p>
       </div>
+
       <div className="chartBox versionBox">
         <div className="chartHeader">
           <BiGitBranch className="chartIcon" size={18} />
