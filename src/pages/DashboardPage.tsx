@@ -9,14 +9,18 @@ import { useMemo } from "react";
 
 const DashboardPage = () => {
   const appId = useSelector((state: RootState) => state.user.currentAppId);
+  const isMyUog = appId === "myuog";
 
-  const { data } = useGetMyUogAppDataQuery(undefined, {
-    skip: appId !== "myuog",
+  const { data: uogData, isLoading: uogLoading, isFetching: uogFetching } = useGetMyUogAppDataQuery(undefined, {
+    skip: !isMyUog,
   });
 
-   const { data: VuStudyData } = useGetMyVUStudyAppDataQuery(undefined, {
-    skip: appId !== "myvustudy",
+  const { data: vuData, isLoading: vuLoading, isFetching: vuFetching } = useGetMyVUStudyAppDataQuery(undefined, {
+    skip: isMyUog,
   });
+
+  const activeData = isMyUog ? uogData : vuData;
+  const isLoading = isMyUog ? (uogLoading || (!activeData && uogFetching)) : (vuLoading || (!activeData && vuFetching));
 
   const {
     totalUsers,
@@ -27,7 +31,7 @@ const DashboardPage = () => {
     versionData,
     deviceData,
   } = useMemo(() => {
-      const users = (appId === "myuog" ? data?.users : VuStudyData?.users) || [];
+    const users = activeData?.users || [];
 
     if (users.length === 0) {
       return {
@@ -65,14 +69,8 @@ const DashboardPage = () => {
 
       if (dateString) {
         const lastSeenMs = new Date(dateString).getTime();
-
-        if (nowMs - lastSeenMs <= oneDayInMs) {
-          dailyCount++;
-        }
-
-        if (lastSeenMs >= startOfCurrentMonthMs) {
-          monthlyCount++;
-        }
+        if (nowMs - lastSeenMs <= oneDayInMs) dailyCount++;
+        if (lastSeenMs >= startOfCurrentMonthMs) monthlyCount++;
       }
 
       const version = user.App_Version || user.app_version || "Unknown";
@@ -111,7 +109,39 @@ const DashboardPage = () => {
       versionData: formattedVersionData,
       deviceData: formattedDeviceData,
     };
-  }, [data?.users, VuStudyData?.users, appId]);
+  }, [activeData?.users]);
+
+  if (isLoading) {
+    return (
+      <div className="dashboardContainer">
+        {[1, 2, 3].map((i) => (
+          <div className="statBox" key={i}>
+            <div className="statHeader">
+              <div className="skeletonPulse skeletonTitle"></div>
+              <div className="skeletonPulse skeletonIcon"></div>
+            </div>
+            <div className="skeletonPulse skeletonValue"></div>
+          </div>
+        ))}
+        {[1, 2].map((i) => (
+          <div className="chartBox" key={i + 3}>
+            <div className="chartHeader">
+              <div className="skeletonPulse skeletonChartTitle"></div>
+            </div>
+            <div className="dataListContainer">
+              {[1, 2, 3, 4, 5].map((j) => (
+                <div className="dataListItem" key={j}>
+                  <div className="skeletonPulse skeletonLabel"></div>
+                  <div className="skeletonPulse skeletonTrack"></div>
+                  <div className="skeletonPulse skeletonNum"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="dashboardContainer">
