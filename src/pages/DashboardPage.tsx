@@ -2,7 +2,7 @@ import { HiMiniUsers, HiMiniCalendarDays, HiMiniBolt } from "react-icons/hi2";
 import { FaMobileAlt } from "react-icons/fa";
 import { BiGitBranch } from "react-icons/bi";
 import "../CSS/DashBoardPage.css";
-import { useGetMyUogAppDataQuery } from "../redux/user/userApi";
+import { useGetMyUogAppDataQuery, useGetMyVUStudyAppDataQuery } from "../redux/user/userApi";
 import type { RootState } from "../redux/store";
 import { useSelector } from "react-redux";
 import { useMemo } from "react";
@@ -14,6 +14,10 @@ const DashboardPage = () => {
     skip: appId !== "myuog",
   });
 
+   const { data: VuStudyData } = useGetMyVUStudyAppDataQuery(undefined, {
+    skip: appId !== "myvustudy",
+  });
+
   const {
     totalUsers,
     dailyActive,
@@ -23,7 +27,7 @@ const DashboardPage = () => {
     versionData,
     deviceData,
   } = useMemo(() => {
-    const users = data?.users || [];
+      const users = (appId === "myuog" ? data?.users : VuStudyData?.users) || [];
 
     if (users.length === 0) {
       return {
@@ -57,7 +61,7 @@ const DashboardPage = () => {
     const deviceCountMap: Record<string, number> = {};
 
     users.forEach((user: any) => {
-      const dateString = user.Last_Seen || user.Timestamp;
+      const dateString = user.Last_Seen || user.Timestamp || user.last_seen_at || user.updated_at;
 
       if (dateString) {
         const lastSeenMs = new Date(dateString).getTime();
@@ -71,10 +75,10 @@ const DashboardPage = () => {
         }
       }
 
-      const version = user.App_Version || "Unknown";
+      const version = user.App_Version || user.app_version || "Unknown";
       versionCountMap[version] = (versionCountMap[version] || 0) + 1;
 
-      const device = user.Device_Model || "Unknown";
+      const device = user.Device_Model || user.device_model || "Unknown";
       deviceCountMap[device] = (deviceCountMap[device] || 0) + 1;
     });
 
@@ -107,7 +111,7 @@ const DashboardPage = () => {
       versionData: formattedVersionData,
       deviceData: formattedDeviceData,
     };
-  }, [data?.users]);
+  }, [data?.users, VuStudyData?.users, appId]);
 
   return (
     <div className="dashboardContainer">
