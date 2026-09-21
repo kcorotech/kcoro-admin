@@ -2,7 +2,7 @@ import { HiMiniUsers, HiMiniCalendarDays, HiMiniBolt } from "react-icons/hi2";
 import { FaMobileAlt } from "react-icons/fa";
 import { BiGitBranch } from "react-icons/bi";
 import "../CSS/DashBoardPage.css";
-import { useGetMyUogAppDataQuery } from "../redux/user/userApi";
+import { useGetMyUogAppDataQuery, useGetMyVUStudyAppDataQuery } from "../redux/user/userApi";
 import type { RootState } from "../redux/store";
 import { useSelector } from "react-redux";
 import { useMemo } from "react";
@@ -14,81 +14,104 @@ const DashboardPage = () => {
     skip: appId !== "myuog",
   });
 
-  const { totalUsers, dailyActive, monthlyActive, versionData, deviceData } =
-    useMemo(() => {
-      const users = data?.users || [];
+   const { data: VuStudyData } = useGetMyVUStudyAppDataQuery(undefined, {
+    skip: appId !== "myvustudy",
+  });
 
-      if (users.length === 0) {
-        return {
-          totalUsers: 0,
-          dailyActive: 0,
-          monthlyActive: 0,
-          versionData: [],
-          deviceData: [],
-        };
-      }
+  const {
+    totalUsers,
+    dailyActive,
+    monthlyActive,
+    currentMonthDay,
+    currentHour,
+    versionData,
+    deviceData,
+  } = useMemo(() => {
+      const users = (appId === "myuog" ? data?.users : VuStudyData?.users) || [];
 
-      const now = new Date().getTime();
-      const oneDayInMs = 24 * 60 * 60 * 1000;
-      const thirtyDaysInMs = 30 * oneDayInMs;
+    if (users.length === 0) {
+      return {
+        totalUsers: 0,
+        dailyActive: 0,
+        monthlyActive: 0,
+        currentMonthDay: 1,
+        currentHour: 0,
+        versionData: [],
+        deviceData: [],
+      };
+    }
 
-      let dailyCount = 0;
-      let monthlyCount = 0;
+    const now = new Date();
+    const nowMs = now.getTime();
+    const currentDay = now.getDate();
+    const currentHour = now.getHours();
 
-      const versionCountMap: Record<string, number> = {};
-      const deviceCountMap: Record<string, number> = {};
+    const startOfCurrentMonthMs = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1,
+    ).getTime();
 
-      users.forEach((user: any) => {
-        const dateString = user.Last_Seen || user.Timestamp;
+    const oneDayInMs = 24 * 60 * 60 * 1000;
 
-        if (dateString) {
-          const lastSeenDate = new Date(dateString).getTime();
-          const timeDifference = now - lastSeenDate;
+    let dailyCount = 0;
+    let monthlyCount = 0;
 
-          if (timeDifference <= oneDayInMs) {
-            dailyCount++;
-          }
+    const versionCountMap: Record<string, number> = {};
+    const deviceCountMap: Record<string, number> = {};
 
-          if (timeDifference <= thirtyDaysInMs) {
-            monthlyCount++;
-          }
+    users.forEach((user: any) => {
+      const dateString = user.Last_Seen || user.Timestamp || user.last_seen_at || user.updated_at;
+
+      if (dateString) {
+        const lastSeenMs = new Date(dateString).getTime();
+
+        if (nowMs - lastSeenMs <= oneDayInMs) {
+          dailyCount++;
         }
 
-        const version = user.App_Version || "Unknown";
-        versionCountMap[version] = (versionCountMap[version] || 0) + 1;
+        if (lastSeenMs >= startOfCurrentMonthMs) {
+          monthlyCount++;
+        }
+      }
 
-        const device = user.Device_Model || "Unknown";
-        deviceCountMap[device] = (deviceCountMap[device] || 0) + 1;
-      });
+      const version = user.App_Version || user.app_version || "Unknown";
+      versionCountMap[version] = (versionCountMap[version] || 0) + 1;
 
-      const total = users.length;
+      const device = user.Device_Model || user.device_model || "Unknown";
+      deviceCountMap[device] = (deviceCountMap[device] || 0) + 1;
+    });
 
-      const formattedVersionData = Object.entries(versionCountMap)
-        .map(([version, count]) => ({
-          version: version.startsWith("v") ? version : `v${version}`,
-          users: count,
-          percent: Math.round((count / total) * 100),
-        }))
-        .sort((a, b) => b.users - a.users)
-        .slice(0, 7);
+    const total = users.length;
 
-      const formattedDeviceData = Object.entries(deviceCountMap)
-        .map(([name, count]) => ({
-          name,
-          users: count,
-          percent: Math.round((count / total) * 100),
-        }))
-        .sort((a, b) => b.users - a.users)
-        .slice(0, 8);
+    const formattedVersionData = Object.entries(versionCountMap)
+      .map(([version, count]) => ({
+        version: version.startsWith("v") ? version : `v${version}`,
+        users: count,
+        percent: Math.round((count / total) * 100),
+      }))
+      .sort((a, b) => b.users - a.users)
+      .slice(0, 7);
 
-      return {
-        totalUsers: users.length,
-        dailyActive: dailyCount,
-        monthlyActive: monthlyCount,
-        versionData: formattedVersionData,
-        deviceData: formattedDeviceData,
-      };
-    }, [data?.users]);
+    const formattedDeviceData = Object.entries(deviceCountMap)
+      .map(([name, count]) => ({
+        name,
+        users: count,
+        percent: Math.round((count / total) * 100),
+      }))
+      .sort((a, b) => b.users - a.users)
+      .slice(0, 8);
+
+    return {
+      totalUsers: users.length,
+      dailyActive: dailyCount,
+      monthlyActive: monthlyCount,
+      currentMonthDay: currentDay,
+      currentHour: currentHour,
+      versionData: formattedVersionData,
+      deviceData: formattedDeviceData,
+    };
+  }, [data?.users, VuStudyData?.users, appId]);
 
   return (
     <div className="dashboardContainer">
@@ -104,7 +127,7 @@ const DashboardPage = () => {
 
       <div className="statBox">
         <div className="statHeader">
-          <p className="statTitle">Monthly Active</p>
+          <p className="statTitle">Monthly Active (Day {currentMonthDay})</p>
           <div className="iconWrapper">
             <HiMiniCalendarDays size={18} />
           </div>
@@ -114,13 +137,14 @@ const DashboardPage = () => {
 
       <div className="statBox">
         <div className="statHeader">
-          <p className="statTitle">Daily Active</p>
+          <p className="statTitle">Daily Active ({currentHour}/24h)</p>
           <div className="iconWrapper">
             <HiMiniBolt size={18} />
           </div>
         </div>
         <p className="statValue">{dailyActive}</p>
       </div>
+
       <div className="chartBox versionBox">
         <div className="chartHeader">
           <BiGitBranch className="chartIcon" size={18} />
