@@ -8,22 +8,46 @@ import {
   HiXMark,
 } from "react-icons/hi2";
 import "../CSS/UsersPage.css";
-import { useGetMyUogAppDataQuery } from "../redux/user/userApi";
+import {
+  useGetMyUogAppDataQuery,
+  useGetMyVUStudyAppDataQuery,
+} from "../redux/user/userApi";
 import type { RootState } from "../redux/store";
 import { useSelector } from "react-redux";
+import type { USERS, VUSTUDY_USERS } from "../redux/user/type";
+
+type UnifiedUser = Partial<USERS & VUSTUDY_USERS>;
 
 const UsersPage = () => {
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedUser, setSelectedUser] = useState<any | null>(null); // For sidebar
+  const [selectedUser, setSelectedUser] = useState<UnifiedUser | null>(null);
   const usersPerPage = 6;
 
   const appId = useSelector((state: RootState) => state.user.currentAppId);
+  const isMyUog = appId === "myuog";
 
-  const { data } = useGetMyUogAppDataQuery(undefined, {
-    skip: appId !== "myuog",
+  const {
+    data: uogData,
+    isLoading: uogLoading,
+    isFetching: uogFetching,
+  } = useGetMyUogAppDataQuery(undefined, {
+    skip: !isMyUog,
   });
+
+  const {
+    data: vuData,
+    isLoading: vuLoading,
+    isFetching: vuFetching,
+  } = useGetMyVUStudyAppDataQuery(undefined, {
+    skip: isMyUog,
+  });
+
+  const activeData = isMyUog ? uogData : vuData;
+  const isLoading = isMyUog
+    ? uogLoading || (!activeData && uogFetching)
+    : vuLoading || (!activeData && vuFetching);
 
   React.useEffect(() => {
     setCurrentPage(1);
@@ -43,44 +67,60 @@ const UsersPage = () => {
   }, []);
 
   const filteredUsers = useMemo(() => {
-    const users = data?.users || [];
-    return users.filter((user: any) => {
+    const users = activeData?.users || [];
+    return users.filter((user) => {
+      const u = user as UnifiedUser;
       const query = searchQuery.toLowerCase();
+      const name = (u.Name || u.username || "").toLowerCase();
+      const hardwareId = (
+        u.Hardware_ID ||
+        u.user_id ||
+        u.device_id ||
+        ""
+      ).toLowerCase();
+      const deviceModel = (
+        u.Device_Model ||
+        u.device_model ||
+        ""
+      ).toLowerCase();
+
       return (
-        user.Name.toLowerCase().includes(query) ||
-        user.Hardware_ID.toLowerCase().includes(query) ||
-        user.Device_Model.toLowerCase().includes(query)
+        name.includes(query) ||
+        hardwareId.includes(query) ||
+        deviceModel.includes(query)
       );
     });
-  }, [searchQuery]);
+  }, [searchQuery, activeData?.users]);
 
   const logCounts = useMemo(() => {
     const successCountMap: Record<string, number> = {};
     const unknownCountMap: Record<string, number> = {};
 
-    data?.successLogs?.forEach((log: any) => {
-      const id = log.Hardware_ID;
-      if (id) successCountMap[id] = (successCountMap[id] || 0) + 1;
-    });
+    if (isMyUog && uogData) {
+      uogData.successLogs?.forEach((log: any) => {
+        const id = log.Hardware_ID;
+        if (id) successCountMap[id] = (successCountMap[id] || 0) + 1;
+      });
 
-    data?.unknownLogs?.forEach((log: any) => {
-      const id = log.Hardware_ID;
-      if (id) unknownCountMap[id] = (unknownCountMap[id] || 0) + 1;
-    });
+      uogData.unknownLogs?.forEach((log: any) => {
+        const id = log.Hardware_ID;
+        if (id) unknownCountMap[id] = (unknownCountMap[id] || 0) + 1;
+      });
+    }
 
     return { successCountMap, unknownCountMap };
-  }, [data?.successLogs, data?.unknownLogs]);
+  }, [isMyUog, uogData]);
 
   const userChatHistory = useMemo(() => {
-    if (!selectedUser || !data?.successLogs) return [];
-    
-    return data.successLogs
+    if (!selectedUser || !isMyUog || !uogData?.successLogs) return [];
+
+    return uogData.successLogs
       .filter((log: any) => log.Hardware_ID === selectedUser.Hardware_ID)
-      .reverse(); 
-  }, [selectedUser, data?.successLogs]);
-  
-  // --- PAGINATION LOGIC (Applied on Filtered Users) ---
-  const totalUsers = filteredUsers?.length;
+      .reverse();
+  }, [selectedUser, isMyUog, uogData]);
+
+  // --- PAGINATION LOGIC ---
+  const totalUsers = filteredUsers?.length || 0;
   const totalPages = Math.ceil(totalUsers / usersPerPage) || 1;
   const indexOfLastUser = currentPage * usersPerPage;
   const indexOfFirstUser = indexOfLastUser - usersPerPage;
@@ -90,12 +130,183 @@ const UsersPage = () => {
     setCurrentPage((prev) => Math.min(prev + 1, totalPages));
   const handlePrev = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
 
+  // --- SKELETON RENDERERS ---
+  const renderTableSkeleton = () => (
+    <div className="tableWrapperCard">
+      <div className="tableScrollArea">
+        <table className="premiumTable">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Device</th>
+              <th>Version</th>
+              <th>Last Active</th>
+              <th className="alignRight">
+                {isMyUog ? "Success Logs" : "Platform"}
+              </th>
+              <th className="alignRight">
+                {isMyUog ? "Unknown Logs" : "Brand"}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...Array(usersPerPage)].map((_, i) => (
+              <tr key={i}>
+                <td>
+                  <div className="userInfo">
+                    <div
+                      className="skeletonPulse skeletonIcon"
+                      style={{
+                        borderRadius: "50%",
+                        width: "40px",
+                        height: "40px",
+                      }}
+                    ></div>
+                    <div className="userDetails" style={{ gap: "6px" }}>
+                      <div
+                        className="skeletonPulse"
+                        style={{ height: "14px", width: "120px" }}
+                      ></div>
+                      <div
+                        className="skeletonPulse"
+                        style={{ height: "12px", width: "180px", opacity: 0.7 }}
+                      ></div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div
+                    className="skeletonPulse"
+                    style={{ height: "14px", width: "100px" }}
+                  ></div>
+                </td>
+                <td>
+                  <div
+                    className="skeletonPulse"
+                    style={{
+                      height: "24px",
+                      width: "60px",
+                      borderRadius: "12px",
+                    }}
+                  ></div>
+                </td>
+                <td>
+                  <div
+                    className="skeletonPulse"
+                    style={{ height: "14px", width: "120px" }}
+                  ></div>
+                </td>
+                <td>
+                  <div
+                    className="skeletonPulse"
+                    style={{
+                      height: "14px",
+                      width: "30px",
+                      marginLeft: "auto",
+                    }}
+                  ></div>
+                </td>
+                <td>
+                  <div
+                    className="skeletonPulse"
+                    style={{
+                      height: "14px",
+                      width: "30px",
+                      marginLeft: "auto",
+                    }}
+                  ></div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  const renderGridSkeleton = () => (
+    <div className="gridFlow">
+      <div className="gridWrapper">
+        {[...Array(usersPerPage)].map((_, i) => (
+          <div className="gridCard" key={i}>
+            <div className="cardTop">
+              <div
+                className="skeletonPulse skeletonIcon"
+                style={{ borderRadius: "50%", width: "42px", height: "42px" }}
+              ></div>
+              <div className="cardUserInfo" style={{ gap: "6px", flex: 1 }}>
+                <div
+                  className="skeletonPulse"
+                  style={{ height: "14px", width: "60%" }}
+                ></div>
+                <div
+                  className="skeletonPulse"
+                  style={{ height: "12px", width: "90%", opacity: 0.7 }}
+                ></div>
+              </div>
+            </div>
+            <div className="cardBody">
+              <div className="cardRow">
+                <div
+                  className="skeletonPulse"
+                  style={{ height: "12px", width: "40px" }}
+                ></div>
+                <div
+                  className="skeletonPulse"
+                  style={{ height: "12px", width: "90px" }}
+                ></div>
+              </div>
+              <div className="cardRow">
+                <div
+                  className="skeletonPulse"
+                  style={{ height: "12px", width: "50px" }}
+                ></div>
+                <div
+                  className="skeletonPulse"
+                  style={{
+                    height: "22px",
+                    width: "60px",
+                    borderRadius: "10px",
+                  }}
+                ></div>
+              </div>
+            </div>
+            <div className="cardFooter">
+              <div className="miniStat" style={{ flex: 1, gap: "6px" }}>
+                <div
+                  className="skeletonPulse"
+                  style={{ height: "12px", width: "100%" }}
+                ></div>
+                <div
+                  className="skeletonPulse"
+                  style={{ height: "16px", width: "50%" }}
+                ></div>
+              </div>
+              <div className="miniStat" style={{ flex: 1, gap: "6px" }}>
+                <div
+                  className="skeletonPulse"
+                  style={{ height: "12px", width: "100%" }}
+                ></div>
+                <div
+                  className="skeletonPulse"
+                  style={{ height: "16px", width: "50%" }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div className="usersPageContainer">
       <div className="usersHeaderArea">
         <div className="titleGroup">
           <h2 className="pageTitle">Users</h2>
-          <div className="totalBadge">{totalUsers} Total</div>
+          <div className="totalBadge">
+            {isLoading ? "..." : totalUsers} Total
+          </div>
         </div>
 
         <div className="headerActions">
@@ -106,6 +317,7 @@ const UsersPage = () => {
               placeholder="Search by ID, Name, or Device..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              disabled={isLoading}
             />
           </div>
 
@@ -126,152 +338,269 @@ const UsersPage = () => {
         </div>
       </div>
 
-      {viewMode === "table" ? (
-        <div className="tableWrapperCard">
-          <div className="tableScrollArea">
-            <table className="premiumTable">
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Device</th>
-                  <th>Version</th>
-                  <th>Last Active</th>
-                  <th className="alignRight">Success Logs</th>
-                  <th className="alignRight">Unknown Logs</th>
-                </tr>
-              </thead>
-              <tbody>
+      {isLoading ? (
+        viewMode === "table" ? (
+          renderTableSkeleton()
+        ) : (
+          renderGridSkeleton()
+        )
+      ) : (
+        <>
+          {viewMode === "table" ? (
+            <div className="tableWrapperCard">
+              <div className="tableScrollArea">
+                <table className="premiumTable">
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th>Device</th>
+                      <th>Version</th>
+                      <th>Last Active</th>
+                      {isMyUog ? (
+                        <>
+                          <th className="alignRight">Success Logs</th>
+                          <th className="alignRight">Unknown Logs</th>
+                        </>
+                      ) : (
+                        <>
+                          <th className="alignRight">Platform</th>
+                          <th className="alignRight">Brand</th>
+                        </>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentUsers.length > 0 ? (
+                      currentUsers.map((rawUser) => {
+                        const user = rawUser as UnifiedUser;
+                        const hardwareId =
+                          user.Hardware_ID ||
+                          user.user_id ||
+                          user.device_id ||
+                          "Unknown_ID";
+                        const name = user.Name || user.username || "Student";
+                        const deviceModel =
+                          user.Device_Model || user.device_model || "Unknown";
+                        const appVersion =
+                          user.App_Version || user.app_version || "Unknown";
+                        const lastSeen =
+                          user.Last_Seen ||
+                          user.last_seen_at ||
+                          user.updated_at ||
+                          user.Timestamp ||
+                          "Unknown";
+                        const platform = user.Platform || user.platform || "-";
+                        const brand = user.brand || "-";
+
+                        return (
+                          <tr
+                            key={hardwareId}
+                            onClick={() => isMyUog && setSelectedUser(user)}
+                            className={isMyUog ? "clickableRow" : ""}
+                            style={{ cursor: isMyUog ? "pointer" : "default" }}
+                          >
+                            <td>
+                              <div className="userInfo">
+                                <div className="userAvatar">
+                                  {name.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="userDetails">
+                                  <span className="userName">{name}</span>
+                                  <span className="userId">{hardwareId}</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="deviceText">{deviceModel}</td>
+                            <td>
+                              <span className="versionBadge">{appVersion}</span>
+                            </td>
+                            <td className="dateText">{lastSeen}</td>
+                            {isMyUog ? (
+                              <>
+                                <td className="alignRight successText">
+                                  {logCounts.successCountMap[hardwareId] || 0}
+                                </td>
+                                <td className="alignRight errorText">
+                                  {logCounts.unknownCountMap[hardwareId] > 0
+                                    ? logCounts.unknownCountMap[hardwareId]
+                                    : "-"}
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td
+                                  className="alignRight"
+                                  style={{ textTransform: "capitalize" }}
+                                >
+                                  {platform}
+                                </td>
+                                <td
+                                  className="alignRight"
+                                  style={{ textTransform: "capitalize" }}
+                                >
+                                  {brand}
+                                </td>
+                              </>
+                            )}
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="emptyState">
+                          No users found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <PaginationFooter
+                start={totalUsers === 0 ? 0 : indexOfFirstUser + 1}
+                end={Math.min(indexOfLastUser, totalUsers)}
+                total={totalUsers}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPrev={handlePrev}
+                onNext={handleNext}
+              />
+            </div>
+          ) : (
+            <div className="gridFlow">
+              <div className="gridWrapper">
                 {currentUsers.length > 0 ? (
-                  currentUsers.map((user) => (
-                    <tr
-                      key={user.Hardware_ID}
-                      onClick={() => setSelectedUser(user)}
-                      className="clickableRow"
-                    >
-                      <td>
-                        <div className="userInfo">
+                  currentUsers.map((rawUser) => {
+                    const user = rawUser as UnifiedUser;
+                    const hardwareId =
+                      user.Hardware_ID ||
+                      user.user_id ||
+                      user.device_id ||
+                      "Unknown_ID";
+                    const name = user.Name || user.username || "Student";
+                    const deviceModel =
+                      user.Device_Model || user.device_model || "Unknown";
+                    const appVersion =
+                      user.App_Version || user.app_version || "Unknown";
+                    const platform = user.Platform || user.platform || "-";
+                    const brand = user.brand || "-";
+
+                    return (
+                      <div
+                        className={`gridCard ${isMyUog ? "clickableCard" : ""}`}
+                        style={{ cursor: isMyUog ? "pointer" : "default" }}
+                        key={hardwareId}
+                        onClick={() => isMyUog && setSelectedUser(user)}
+                      >
+                        <div className="cardTop">
                           <div className="userAvatar">
-                            {user.Name
-                              ? user.Name.charAt(0).toUpperCase()
-                              : "U"}
+                            {name.charAt(0).toUpperCase()}
                           </div>
-                          <div className="userDetails">
-                            <span className="userName">{user.Name}</span>
-                            <span className="userId">{user.Hardware_ID}</span>
+                          <div className="cardUserInfo">
+                            <span className="userName">{name}</span>
+                            <span className="userId">{hardwareId}</span>
                           </div>
                         </div>
-                      </td>
-                      <td className="deviceText">{user.Device_Model}</td>
-                      <td>
-                        <span className="versionBadge">{user.App_Version}</span>
-                      </td>
-                      <td className="dateText">
-                        {user.Last_Seen || user.Timestamp}
-                      </td>
-                      <td className="alignRight successText">
-                        {logCounts.successCountMap[user.Hardware_ID] || 0}
-                      </td>
-                      <td className="alignRight errorText">
-                       {logCounts.unknownCountMap[user.Hardware_ID] > 0
-                          ? logCounts.unknownCountMap[user.Hardware_ID]
-                          : "-"}
-                      </td>
-                    </tr>
-                  ))
+
+                        <div className="cardBody">
+                          <div className="cardRow">
+                            <span className="cardLabel">Device</span>
+                            <span className="cardVal">{deviceModel}</span>
+                          </div>
+                          <div className="cardRow">
+                            <span className="cardLabel">Version</span>
+                            <span className="versionBadge">{appVersion}</span>
+                          </div>
+                        </div>
+
+                        <div className="cardFooter">
+                          {isMyUog ? (
+                            <>
+                              <div className="miniStat">
+                                <span className="statLabel">Success</span>
+                                <span className="successText">
+                                  {logCounts.successCountMap[hardwareId] || 0}
+                                </span>
+                              </div>
+                              <div className="miniStat">
+                                <span className="statLabel">Unknown</span>
+                                <span className="errorText">
+                                  {logCounts.unknownCountMap[hardwareId] > 0
+                                    ? logCounts.unknownCountMap[hardwareId]
+                                    : "-"}
+                                </span>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="miniStat">
+                                <span className="statLabel">Platform</span>
+                                <span
+                                  style={{
+                                    textTransform: "capitalize",
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {platform}
+                                </span>
+                              </div>
+                              <div className="miniStat">
+                                <span className="statLabel">Brand</span>
+                                <span
+                                  style={{
+                                    textTransform: "capitalize",
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {brand}
+                                </span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
                 ) : (
-                  <tr>
-                    <td colSpan={6} className="emptyState">
-                      No users found.
-                    </td>
-                  </tr>
+                  <div className="emptyState">No users found.</div>
                 )}
-              </tbody>
-            </table>
-          </div>
+              </div>
 
-          <PaginationFooter
-            start={totalUsers === 0 ? 0 : indexOfFirstUser + 1}
-            end={Math.min(indexOfLastUser, totalUsers)}
-            total={totalUsers}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPrev={handlePrev}
-            onNext={handleNext}
-          />
-        </div>
-      ) : (
-        <div className="gridFlow">
-          <div className="gridWrapper">
-            {currentUsers.length > 0 ? (
-              currentUsers.map((user) => (
-                <div
-                  className="gridCard clickableCard"
-                  key={user.Hardware_ID}
-                  onClick={() => setSelectedUser(user)}
-                >
-                  <div className="cardTop">
-                    <div className="userAvatar">
-                      {user.Name ? user.Name.charAt(0).toUpperCase() : "U"}
-                    </div>
-                    <div className="cardUserInfo">
-                      <span className="userName">{user.Name}</span>
-                      <span className="userId">{user.Hardware_ID}</span>
-                    </div>
-                  </div>
-
-                  <div className="cardBody">
-                    <div className="cardRow">
-                      <span className="cardLabel">Device</span>
-                      <span className="cardVal">{user.Device_Model}</span>
-                    </div>
-                    <div className="cardRow">
-                      <span className="cardLabel">Version</span>
-                      <span className="versionBadge">{user.App_Version}</span>
-                    </div>
-                  </div>
-
-                  <div className="cardFooter">
-                    <div className="miniStat">
-                      <span className="statLabel">Success</span>
-                      <span className="successText">{logCounts.successCountMap[user.Hardware_ID] || 0}</span>
-                    </div>
-                    <div className="miniStat">
-                      <span className="statLabel">Unknown</span>
-                      <span className="errorText">{logCounts.unknownCountMap[user.Hardware_ID] > 0
-                          ? logCounts.unknownCountMap[user.Hardware_ID]
-                          : "-"}</span>
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="emptyState">No users found.</div>
-            )}
-          </div>
-
-          <div className="gridPaginationWrapper">
-            <PaginationFooter
-              start={totalUsers === 0 ? 0 : indexOfFirstUser + 1}
-              end={Math.min(indexOfLastUser, totalUsers)}
-              total={totalUsers}
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPrev={handlePrev}
-              onNext={handleNext}
-            />
-          </div>
-        </div>
+              <div className="gridPaginationWrapper">
+                <PaginationFooter
+                  start={totalUsers === 0 ? 0 : indexOfFirstUser + 1}
+                  end={Math.min(indexOfLastUser, totalUsers)}
+                  total={totalUsers}
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPrev={handlePrev}
+                  onNext={handleNext}
+                />
+              </div>
+            </div>
+          )}
+        </>
       )}
-
+      
       {selectedUser && (
         <div className="sidebarOverlay" onClick={() => setSelectedUser(null)}>
           <div className="sidebarPanel" onClick={(e) => e.stopPropagation()}>
             <div className="sidebarHeader">
               <div className="sidebarUserInfo">
-                <div className="userAvatar">{selectedUser.Name ? selectedUser.Name.charAt(0).toUpperCase() : "U"}</div>
+                <div className="userAvatar">
+                  {(selectedUser.Name || selectedUser.username || "U")
+                    .charAt(0)
+                    .toUpperCase()}
+                </div>
                 <div>
-                  <h3>{selectedUser.Name || "Student"}</h3>
-                  <p>{selectedUser.Hardware_ID}</p>
+                  <h3>
+                    {selectedUser.Name || selectedUser.username || "Student"}
+                  </h3>
+                  <p>
+                    {selectedUser.Hardware_ID ||
+                      selectedUser.user_id ||
+                      selectedUser.device_id}
+                  </p>
                 </div>
               </div>
               <button
@@ -285,20 +614,26 @@ const UsersPage = () => {
             <div className="sidebarContent">
               <h4 className="chatSectionTitle">Interaction History</h4>
 
-             {userChatHistory.length > 0 ? (
+              {userChatHistory.length > 0 ? (
                 <div className="chatList">
-                  {userChatHistory.map((chat: any, index: number) => (
-                    <div key={index} className="chatExchange">
-                      <div className="chatBubble userBubble">
-                        <span className="bubbleLabel">User</span>
-                        <p>{chat.Question}</p>
+                  {userChatHistory.map((chat: any, index: number) => {
+                    const question = chat.Question || chat.question || "";
+                    const botResponse =
+                      chat.Bot_Response || chat.bot_response || "";
+
+                    return (
+                      <div key={index} className="chatExchange">
+                        <div className="chatBubble userBubble">
+                          <span className="bubbleLabel">User</span>
+                          <p>{question}</p>
+                        </div>
+                        <div className="chatBubble botBubble">
+                          <span className="bubbleLabel">Bot</span>
+                          <p>{botResponse}</p>
+                        </div>
                       </div>
-                      <div className="chatBubble botBubble">
-                        <span className="bubbleLabel">Bot</span>
-                        <p>{chat.Bot_Response}</p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="emptyState">

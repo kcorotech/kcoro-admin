@@ -2,93 +2,146 @@ import { HiMiniUsers, HiMiniCalendarDays, HiMiniBolt } from "react-icons/hi2";
 import { FaMobileAlt } from "react-icons/fa";
 import { BiGitBranch } from "react-icons/bi";
 import "../CSS/DashBoardPage.css";
-import { useGetMyUogAppDataQuery } from "../redux/user/userApi";
+import { useGetMyUogAppDataQuery, useGetMyVUStudyAppDataQuery } from "../redux/user/userApi";
 import type { RootState } from "../redux/store";
 import { useSelector } from "react-redux";
 import { useMemo } from "react";
 
 const DashboardPage = () => {
   const appId = useSelector((state: RootState) => state.user.currentAppId);
+  const isMyUog = appId === "myuog";
 
-  const { data } = useGetMyUogAppDataQuery(undefined, {
-    skip: appId !== "myuog",
+  const { data: uogData, isLoading: uogLoading, isFetching: uogFetching } = useGetMyUogAppDataQuery(undefined, {
+    skip: !isMyUog,
   });
 
-  const { totalUsers, dailyActive, monthlyActive, versionData, deviceData } =
-    useMemo(() => {
-      const users = data?.users || [];
+  const { data: vuData, isLoading: vuLoading, isFetching: vuFetching } = useGetMyVUStudyAppDataQuery(undefined, {
+    skip: isMyUog,
+  });
 
-      if (users.length === 0) {
-        return {
-          totalUsers: 0,
-          dailyActive: 0,
-          monthlyActive: 0,
-          versionData: [],
-          deviceData: [],
-        };
+  const activeData = isMyUog ? uogData : vuData;
+  const isLoading = isMyUog ? (uogLoading || (!activeData && uogFetching)) : (vuLoading || (!activeData && vuFetching));
+
+  const {
+    totalUsers,
+    dailyActive,
+    monthlyActive,
+    currentMonthDay,
+    currentHour,
+    versionData,
+    deviceData,
+  } = useMemo(() => {
+    const users = activeData?.users || [];
+
+    if (users.length === 0) {
+      return {
+        totalUsers: 0,
+        dailyActive: 0,
+        monthlyActive: 0,
+        currentMonthDay: 1,
+        currentHour: 0,
+        versionData: [],
+        deviceData: [],
+      };
+    }
+
+    const now = new Date();
+    const nowMs = now.getTime();
+    const currentDay = now.getDate();
+    const currentHour = now.getHours();
+
+    const startOfCurrentMonthMs = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1,
+    ).getTime();
+
+    const oneDayInMs = 24 * 60 * 60 * 1000;
+
+    let dailyCount = 0;
+    let monthlyCount = 0;
+
+    const versionCountMap: Record<string, number> = {};
+    const deviceCountMap: Record<string, number> = {};
+
+    users.forEach((user: any) => {
+      const dateString = user.Last_Seen || user.Timestamp || user.last_seen_at || user.updated_at;
+
+      if (dateString) {
+        const lastSeenMs = new Date(dateString).getTime();
+        if (nowMs - lastSeenMs <= oneDayInMs) dailyCount++;
+        if (lastSeenMs >= startOfCurrentMonthMs) monthlyCount++;
       }
 
-      const now = new Date().getTime();
-      const oneDayInMs = 24 * 60 * 60 * 1000;
-      const thirtyDaysInMs = 30 * oneDayInMs;
+      const version = user.App_Version || user.app_version || "Unknown";
+      versionCountMap[version] = (versionCountMap[version] || 0) + 1;
 
-      let dailyCount = 0;
-      let monthlyCount = 0;
+      const device = user.Device_Model || user.device_model || "Unknown";
+      deviceCountMap[device] = (deviceCountMap[device] || 0) + 1;
+    });
 
-      const versionCountMap: Record<string, number> = {};
-      const deviceCountMap: Record<string, number> = {};
+    const total = users.length;
 
-      users.forEach((user: any) => {
-        const dateString = user.Last_Seen || user.Timestamp;
+    const formattedVersionData = Object.entries(versionCountMap)
+      .map(([version, count]) => ({
+        version: version.startsWith("v") ? version : `v${version}`,
+        users: count,
+        percent: Math.round((count / total) * 100),
+      }))
+      .sort((a, b) => b.users - a.users)
+      .slice(0, 7);
 
-        if (dateString) {
-          const lastSeenDate = new Date(dateString).getTime();
-          const timeDifference = now - lastSeenDate;
+    const formattedDeviceData = Object.entries(deviceCountMap)
+      .map(([name, count]) => ({
+        name,
+        users: count,
+        percent: Math.round((count / total) * 100),
+      }))
+      .sort((a, b) => b.users - a.users)
+      .slice(0, 8);
 
-          if (timeDifference <= oneDayInMs) {
-            dailyCount++;
-          }
+    return {
+      totalUsers: users.length,
+      dailyActive: dailyCount,
+      monthlyActive: monthlyCount,
+      currentMonthDay: currentDay,
+      currentHour: currentHour,
+      versionData: formattedVersionData,
+      deviceData: formattedDeviceData,
+    };
+  }, [activeData?.users]);
 
-          if (timeDifference <= thirtyDaysInMs) {
-            monthlyCount++;
-          }
-        }
-
-        const version = user.App_Version || "Unknown";
-        versionCountMap[version] = (versionCountMap[version] || 0) + 1;
-
-        const device = user.Device_Model || "Unknown";
-        deviceCountMap[device] = (deviceCountMap[device] || 0) + 1;
-      });
-
-      const total = users.length;
-
-      const formattedVersionData = Object.entries(versionCountMap)
-        .map(([version, count]) => ({
-          version: version.startsWith("v") ? version : `v${version}`,
-          users: count,
-          percent: Math.round((count / total) * 100),
-        }))
-        .sort((a, b) => b.users - a.users)
-        .slice(0, 7);
-
-      const formattedDeviceData = Object.entries(deviceCountMap)
-        .map(([name, count]) => ({
-          name,
-          users: count,
-          percent: Math.round((count / total) * 100),
-        }))
-        .sort((a, b) => b.users - a.users)
-        .slice(0, 8);
-
-      return {
-        totalUsers: users.length,
-        dailyActive: dailyCount,
-        monthlyActive: monthlyCount,
-        versionData: formattedVersionData,
-        deviceData: formattedDeviceData,
-      };
-    }, [data?.users]);
+  if (isLoading) {
+    return (
+      <div className="dashboardContainer">
+        {[1, 2, 3].map((i) => (
+          <div className="statBox" key={i}>
+            <div className="statHeader">
+              <div className="skeletonPulse skeletonTitle"></div>
+              <div className="skeletonPulse skeletonIcon"></div>
+            </div>
+            <div className="skeletonPulse skeletonValue"></div>
+          </div>
+        ))}
+        {[1, 2].map((i) => (
+          <div className="chartBox" key={i + 3}>
+            <div className="chartHeader">
+              <div className="skeletonPulse skeletonChartTitle"></div>
+            </div>
+            <div className="dataListContainer">
+              {[1, 2, 3, 4, 5].map((j) => (
+                <div className="dataListItem" key={j}>
+                  <div className="skeletonPulse skeletonLabel"></div>
+                  <div className="skeletonPulse skeletonTrack"></div>
+                  <div className="skeletonPulse skeletonNum"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="dashboardContainer">
@@ -104,7 +157,7 @@ const DashboardPage = () => {
 
       <div className="statBox">
         <div className="statHeader">
-          <p className="statTitle">Monthly Active</p>
+          <p className="statTitle">Monthly Active (Day {currentMonthDay})</p>
           <div className="iconWrapper">
             <HiMiniCalendarDays size={18} />
           </div>
@@ -114,13 +167,14 @@ const DashboardPage = () => {
 
       <div className="statBox">
         <div className="statHeader">
-          <p className="statTitle">Daily Active</p>
+          <p className="statTitle">Daily Active ({currentHour}/24h)</p>
           <div className="iconWrapper">
             <HiMiniBolt size={18} />
           </div>
         </div>
         <p className="statValue">{dailyActive}</p>
       </div>
+
       <div className="chartBox versionBox">
         <div className="chartHeader">
           <BiGitBranch className="chartIcon" size={18} />

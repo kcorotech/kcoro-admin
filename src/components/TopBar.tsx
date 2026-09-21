@@ -8,6 +8,11 @@ import myVU_logo from "../assets/myVU_logo.png";
 import { logoutUser, setCurrentApp } from "../redux/user/userSlice";
 import type { RootState } from "../redux/store";
 import { CURRENT_APP_ID } from "../utils/Keys";
+import { FaSyncAlt } from "react-icons/fa";
+import {
+  useGetMyUogAppDataQuery,
+  useGetMyVUStudyAppDataQuery,
+} from "../redux/user/userApi";
 
 const ECOSYSTEM_APPS = [
   { id: "myuog", name: "MyUOG: GPA & Past Papers", uri: myUog_logo },
@@ -18,12 +23,25 @@ const TopBar = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const dispatch = useDispatch();
+  const currentAppId =
+    useSelector((state: RootState) => state.user.currentAppId) ||
+    localStorage.getItem(CURRENT_APP_ID) ||
+    "myuog";
 
-  const currentAppId = useSelector((state: RootState) => state.user.currentAppId) 
-    || localStorage.getItem(CURRENT_APP_ID) 
-    || "myuog";
+  const { refetch: reloadUOG, isFetching: isFetchingUOG } =
+    useGetMyUogAppDataQuery(undefined, {
+      skip: currentAppId !== "myuog",
+    });
 
-  const currentApp = ECOSYSTEM_APPS.find((app) => app.id === currentAppId) || ECOSYSTEM_APPS[0];
+  const { refetch: reloadVU, isFetching: isFetchingVU } =
+    useGetMyVUStudyAppDataQuery(undefined, {
+      skip: currentAppId !== "myvustudy",
+    });
+
+  const isRefreshing = currentAppId === "myuog" ? isFetchingUOG : isFetchingVU;
+
+  const currentApp =
+    ECOSYSTEM_APPS.find((app) => app.id === currentAppId) || ECOSYSTEM_APPS[0];
   const otherApps = ECOSYSTEM_APPS.filter((app) => app.id !== currentAppId);
 
   useEffect(() => {
@@ -44,16 +62,19 @@ const TopBar = () => {
   };
 
   const handleAppSwitch = (appId: string) => {
-
     localStorage.setItem(CURRENT_APP_ID, appId);
-    dispatch(setCurrentApp(appId)); 
+    dispatch(setCurrentApp(appId));
     setIsProfileOpen(false);
   };
 
   return (
     <header className="topBarContainer">
       <div className="topBarBrand">
-        <img src={currentApp.uri} alt={`${currentApp.name} Logo`} className="topBarLogo" />
+        <img
+          src={currentApp.uri}
+          alt={`${currentApp.name} Logo`}
+          className="topBarLogo"
+        />
         <div className="topBarBrandText">
           <span className="topBarTitle">{currentApp.name}</span>
         </div>
@@ -69,7 +90,7 @@ const TopBar = () => {
           >
             <FaRepeat size={18} />
           </button>
-          
+
           {isProfileOpen && (
             <div className="profileDropdownMenu">
               <div className="dropdownHeader">
@@ -80,8 +101,8 @@ const TopBar = () => {
               <div className="dropdownSection">
                 <div className="appList">
                   {otherApps.map((app) => (
-                    <div 
-                      key={app.id} 
+                    <div
+                      key={app.id}
                       className="appLinkItem"
                       onClick={() => handleAppSwitch(app.id)}
                       style={{ cursor: "pointer" }}
@@ -107,8 +128,19 @@ const TopBar = () => {
           )}
         </div>
 
-        <button type="button" className="topBarIconButton" title="Profile">
-          <FaRegCircleUser size={20} />
+        <button
+          type="button"
+          className="topBarIconButton"
+          title="Refresh Data"
+          onClick={() => {
+            if (currentAppId === "myuog") {
+              reloadUOG();
+            } else {
+              reloadVU();
+            }
+          }}
+        >
+         <FaSyncAlt size={20} className={isRefreshing ? "spin-animation" : ""} />
         </button>
       </div>
     </header>
