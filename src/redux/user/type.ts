@@ -9,7 +9,7 @@ export interface VU_STUDY_DATA_TYPE {
   users: VUSTUDY_USERS[];
 }
 
-interface USERS {
+export interface USERS {
   App_Version: string;
   Device_Model: string;
   Hardware_ID: string;
@@ -40,7 +40,7 @@ interface UNKNOWN_LOGS {
   Timestamp: string;
   comments: string;
 }
-interface VUSTUDY_USERS {
+export interface VUSTUDY_USERS {
   app_version: string;
   brand: string;
   created_at: string;
